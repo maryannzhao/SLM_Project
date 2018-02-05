@@ -12,6 +12,8 @@ library(skimr)
 library(broom)
 library(mosaic)
 options(digits=3)
+```
 
+```{r, eval=TRUE}
 skim(tmdb_5000_movies)
 ```
