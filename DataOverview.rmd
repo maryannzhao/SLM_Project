@@ -14,6 +14,7 @@ library(mosaic)
 options(digits=3)
 ```
 
+The observational units are individual movies. Quantitative variables include budget, popularity, revenue, runtime, vote average and vote count. Categorical variables include genres, keywords, original language, production company, production country and release date.
 ```{r, eval=TRUE}
 skim(tmdb_5000_movies)
 ```
