@@ -1,3 +1,4 @@
-```{r}
-anova(sat_lm)
+```{r, eval=TRUE}
+xpnorm(205, mean=200, sd=5)
+xpnorm(195, mean=200, sd=5)
 ```
