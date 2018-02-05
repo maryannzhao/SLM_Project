@@ -1,3 +1,8 @@
+---
+title: "DataOverview"
+output: word_document
+---
+
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align = "center")
 library(dplyr)
@@ -7,4 +12,6 @@ library(skimr)
 library(broom)
 library(mosaic)
 options(digits=3)
+
+skim(tmdb_5000_movies)
 ```
