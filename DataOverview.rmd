@@ -1,5 +1,6 @@
 ---
-title: "DataOverview"
+title: "Data Overview: Movies!"
+author: "Maryann Zhao and Leyla Akay"
 output: word_document
 ---
 
@@ -11,10 +12,62 @@ library(infer)
 library(skimr)
 library(broom)
 library(mosaic)
+library(knitr)
+library(readr)
 options(digits=3)
 ```
 
-The observational units are individual movies. Quantitative variables include budget, popularity, revenue, runtime, vote average and vote count. Categorical variables include genres, keywords, original language, production company, production country and release date.
+##Data Description
+Source: https://www.kaggle.com/tmdb/tmdb-movie-metadata
+
+The observational units of our dataset are individual movies. While the dataset includes 20 variables, there are ~10 that are of interest to us. Quantitative variables include budgets for the movies, popularity, revenue produced, runtime, and average votes for the movie. Categorical variables include genres, keywords that describe the movie, original language the movie was released in, production company, and production country.
+
+###Summary Statistics
+From a skim of the summary statistics, we see that the dataset has 4803 observational units and includes several variable types that can be used for categorical variables (character) and continuous variables (integer, numeric). Looking at a few of the variable that we're interested in, we see that the budget, revenue and popularity seem to be right skewed with a mean higher than the median. The production companies have a significant number of unique n but we may be interested in investigating the characteristics of the movies produced from large companies compared to smaller ones. Many of the movies fall under several genres, so we could investigate the association of any movie that falls in certain genres with the other variables such as revenue. 
 ```{r, eval=TRUE}
+tmdb_5000_movies <- read_csv("~/LM HW/SLM_Project/tmdb_5000_movies-OG.csv")
+tmdb2 <- read_csv("tmdb_2.csv")
+
+library(readr)
+library(purrr)
+df <- readr::read_csv("tmdb_5000_movies-OG.csv")
+genres.table <- purrr::map(df$genres, jsonlite::fromJSON)
+genres.table <- purrr::map_df(genres.table, ~data.frame(x=.x), .id="movieID")
+
 skim(tmdb_5000_movies)
 ```
+
+
+###Graphical Display 
+1. From the plots that evaluate the budgets and popularity for the different genres, it is interesting to see that some of the genres that have higher budgets, such as action, also seem to have high popularity. These graphs aren't necessarily useful for seeing linear associations but it gives us an idea of what the distributions between different genres look like. 
+```{r, eval=TRUE}
+genres <-tmdb2$genres1
+budget <- tmdb2$budget
+ggplot(tmdb2, aes(x=genres, y=budget))+
+  geom_col()+
+  coord_flip()
+ggplot(tmdb2, aes(x=genres, y=popularity))+
+  geom_col()+
+  coord_flip()
+```
+
+2. This scatterplot is interesting... Immediately from the dense plot on the right, it looks like there could potentially be some relationship between budget and popularity. The left side of the plot is interesting though because there are quite a few data points that have budget value of 0 but has high popularity. Not sure what to make of it yet but will look into it in the future. 
+
+```{r, eval=TRUE}
+ggplot(tmdb2, aes(x=budget, y=popularity)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+3. Similar to the plot before, these look as though there could be a potential relationship between budget and revenue, but again there are data points with zero values for revenue and budget. 
+```{r, eval=TRUE}
+ggplot(tmdb2, aes(x=budget, y=revenue)) +
+  geom_point()+
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+###Thoughts on data
+Generally, this data set should be a representative sample of the population of movies out there, especially considering the size of the dataset. Some trends were expected, such as the association between the revenue and popularity, but some of the plots were unexpected because of the zero values. We are interested in investigating the relationships between genre and revenue or budget and popularity. There are some other variables we haven't looked at, such as production company and country, that we want to look at as well. 
