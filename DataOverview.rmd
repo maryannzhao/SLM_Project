@@ -71,3 +71,7 @@ ggplot(tmdb2, aes(x=budget, y=revenue)) +
 
 ###Thoughts on data
 Generally, this data set should be a representative sample of the population of movies out there, especially considering the size of the dataset. Some trends were expected, such as the association between the revenue and popularity, but some of the plots were unexpected because of the zero values. We are interested in investigating the relationships between genre and revenue or budget and popularity. There are some other variables we haven't looked at, such as production company and country, that we want to look at as well. 
+
+###Pairs
+Github repository: https://github.com/zhaozhaoo/SLM_Project
+Name: SLM_Project
