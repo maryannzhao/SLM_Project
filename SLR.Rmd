@@ -98,6 +98,9 @@ crit_WH <- sqrt(2*qf(.95, num_int, glance(movies)$df.resid))
 crit_Sch <- sqrt(num_int*qf(.95, n-2, glance(movies)$df.resid))
 
 #mean intervals for all n points
+movie_gl <- broom::glance(movies)
+movie_sig <- dplyr::pull(movie_gl, sigma)
+
 movie_CI <-broom::augment(movies) %>%
   mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
   mutate(lower_CI = .fitted - crit_val * .se.fit,
