@@ -17,6 +17,48 @@ library(readr)
 options(digits=3)
 ```
 
+##Introduction
+We are studying a dataset of movies, that contains information about their languages, actors, genres, etc. For this project, our variables of interest are budget (in US Dollars) and popularity (based on number of votes per day, and number of views and favorites). We are interested in determining whether there is a linear relationship between the two, and if so, the nature of the relationship. 
+
+##Hypotheses
+Our null hypothesis is that there is no relationship between budget and popularity; our alternative hypothesis is that there is a positive relationship between budget and popularity. That is, $\beta_1 > 0$. 
+
+##Assumptions for linear regression:
+1. Linearity
+An initial plot of budget values vs. popularity indicates a linear shape. We transformed both explanatory and response variables with a log function, and noticed that the plot became more linear, so we decided to keep the transformation for the remaining tests.
+
+2. Independence
+We are assuming mathematical independence--that is, spending more money doesn't necessarily translate to increased popularity, or vice versa. 
+
+3. Normality & Constant Errors
+To check this, we plotted the residuals and looked at the symmetry. The residuals appear to be symmetrically distributed around 0, with some increased scattering at lower values of budget. The residuals appear more concentrated around 0, and are all in the range of +/- 4.  
+
+```
+r, eval=TRUE
+
+```
+##Testing $\beta_1$
+To determine whether the alternative hypothesis holds, we determined a 95% confidence interval for $\beta_1$. We found the CI was between 0.317 and 0.353. Because both variables had been logged-transformed, this means that a doubling of budget would be consistent with a multiplicative change in median of popularity between:
+$2^(0.317) and 2^(0.353)$, which is consistent with 1.25 and 1.28.
+
+##Plotting variables
+We were interested in movies with 1M$ budgets, since these are relatively low compared to many block-buster films, but many appear to achieve comprable levels of popularity. In this situation, we thought of budget as the explanatory variable, since it's determined before popularity, so although budget doesn't necessarily explain popularity, it wouldn't be possible for popularity to inform budget. 
+(Come back to plot)
+
+##Assessing the fit
+The r-squared value is 0.262. The residuals (plotted above) appear to be evenly distributed. Therefore, we believe our model accurately describes the data. 
+
+##Conclusion
+In general, the positive relationship was expected. The decreased variability at very high budgets was interesting, but upon further reflection we guess it makes sense. Movies that spend tens of millions of dollars probably attract high-profile actors and have lots of advertising campaigns, which probably increase the popularity. 
+
+##Pairs: Simultaneous Inference
+To find the mean and prediction intervals for all n values, we used the Bonferroni, Working-Hotelling, and Scheffé methods. 
+
+It's important to control for multiple comparisons, because the more variables you add, the more likely you are to get a "significant" difference, even though there isn't a real effect.
+
+It's most useful to use 
+
+
 ```{r, eval=TRUE}
 tmdb_5000_movies <- read_csv("~/LM HW/SLM_Project/tmdb_5000_movies-OG.csv")
 tmdb2 <- read_csv("tmdb_2.csv")
@@ -283,3 +325,4 @@ scheffe.bonferroni.intervals <- function(x, y) {
   return(res)
 }
 ```
+
