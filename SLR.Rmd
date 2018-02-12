@@ -76,7 +76,7 @@ summary(movies)$r.squared
 library(robustbase)
 library(investr)
 library(ggplot2)
-library(gridExtra)
+#library(gridExtra)
 
 movie_gl <- broom::glance(movies)
 movie_sig <- dplyr::pull(movie_gl, sigma)
@@ -98,9 +98,14 @@ ggplot(movie_pred, aes(x = bud.log, y =pop.log)) + geom_point() +
 ```
 
 ```{r, eval=TRUE}
-num_int <- 3
+glance(movies)
+augment(movies)%>%
+  summary()
 crit_Bonf <- qt((1-.975)/num_int, glance(movies)$df.resid)
-crit_WH <- sqrt(2*qf(.95, num_int, glance(movies)$df.resid))
+crit_WH <- sqrt(2*qf(.95, df1 = 2, df2 = , glance(movies)$df.resid))
+
+  W <- sqrt(2 * qf(p = 0.95, df1 = 2, df2 = n - 2))
+  B <- 1-qt(.95/(2 * 3), n - 1)
 
 movie_Bonf <- broom::augment(movies) %>%
 mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
@@ -117,6 +122,20 @@ ggplot(movie_Bonf, aes(x = bud.log, y =pop.log)) + geom_point() +
   geom_ribbon(data = movie_Bonf, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red") +
   xlab("log(budget)") + ylab("log(popularity)")
 
+movie_WH <- broom::augment(movies) %>%
+mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
+mutate(lower_PI = .fitted - crit_WH*.se.pred,
+upper_PI = .fitted + crit_WH *.se.pred,
+lower_CI = .fitted - crit_WH * .se.fit,
+upper_CI = .fitted + crit_WH * .se.fit)
+
+movie_WH %>% head()
+
+ggplot(movie_WH, aes(x = bud.log, y =pop.log)) + geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  geom_ribbon(aes(ymin = lower_PI, ymax = upper_PI), alpha = .2) +
+  geom_ribbon(data = movie_WH, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red") +
+  xlab("log(budget)") + ylab("log(popularity)")
 ```
 
 ```{r, eval=TRUE}
