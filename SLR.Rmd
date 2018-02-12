@@ -46,7 +46,7 @@ ggplot (movies, aes(x=fitted(movies), y=resid(movies))) + geom_point()
 ```
 
 ```{r, eval=TRUE}
-#Attempt at CI and PI for 1 mill budget
+#CI and PI for 1 mill budget
 broom::tidy(movies, conf.int = TRUE, conf.level = 0.95)
 mill <- data.frame(bud.log=c(13.8))
 crit_val <- qt(.95, glance(movies)$df.resid)
@@ -98,14 +98,14 @@ ggplot(movie_pred, aes(x = bud.log, y =pop.log)) + geom_point() +
 ```
 
 ```{r, eval=TRUE}
-glance(movies)
-augment(movies)%>%
-  summary()
-crit_Bonf <- qt((1-.975)/num_int, glance(movies)$df.resid)
-crit_WH <- sqrt(2*qf(.95, df1 = 2, df2 = , glance(movies)$df.resid))
+num_int <- 3
+n <- 3766
+crit_Bonf <- qt((1-.05)/num_int, glance(movies)$df.resid)
+crit_WH <- sqrt(2*qf(.95, num_int, glance(movies)$df.resid))
+crit_Sch <- sqrt(num_int*qf(.95, n-2, glance(movies)$df.resid))
 
-  W <- sqrt(2 * qf(p = 0.95, df1 = 2, df2 = n - 2))
-  B <- 1-qt(.95/(2 * 3), n - 1)
+ # W <- sqrt(2 * qf(p = 0.95, df1 = 2, df2 = n - 2))
+  #B <- 1-qt(.95/(2 * 3), n - 1)
 
 movie_Bonf <- broom::augment(movies) %>%
 mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
@@ -135,6 +135,21 @@ ggplot(movie_WH, aes(x = bud.log, y =pop.log)) + geom_point() +
   stat_smooth(method = "lm", se = FALSE) +
   geom_ribbon(aes(ymin = lower_PI, ymax = upper_PI), alpha = .2) +
   geom_ribbon(data = movie_WH, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red") +
+  xlab("log(budget)") + ylab("log(popularity)")
+
+movie_sch <- broom::augment(movies) %>%
+mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
+mutate(lower_PI = .fitted - crit_Sch*.se.pred,
+upper_PI = .fitted + crit_Sch *.se.pred,
+lower_CI = .fitted - crit_Sch * .se.fit,
+upper_CI = .fitted + crit_Sch * .se.fit)
+
+movie_sch %>% head()
+
+ggplot(movie_sch, aes(x = bud.log, y =pop.log)) + geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  geom_ribbon(aes(ymin = lower_PI, ymax = upper_PI), alpha = .2) +
+  geom_ribbon(data = movie_sch, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red") +
   xlab("log(budget)") + ylab("log(popularity)")
 ```
 
