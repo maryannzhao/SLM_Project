@@ -112,8 +112,6 @@ movie_CI <-broom::augment(movies) %>%
   lower_CI_S = .fitted - crit_Sch*.se.fit,
   upper_CI_S = .fitted + crit_Sch*.se.fit)
 
-movie_CI %>% head()
-
 #blue - no adjustment, red - Working-Hotelling, green - Bonferroni
 ggplot(movie_CI, aes(x = bud.log, y =pop.log)) + geom_point() +
   stat_smooth(method = "lm", se = FALSE) +
@@ -133,8 +131,6 @@ movie_PI <-broom::augment(movies) %>%
   upper_PI_WH = .fitted + crit_WH*.se.pred,
   lower_PI_S = .fitted - crit_Sch*.se.pred,
   upper_PI_S = .fitted + crit_Sch*.se.pred)
-
-movie_PI %>% head()
 
 #blue - no adjustment, red - Scheffer, green - Bonferroni
 ggplot(movie_PI, aes(x = bud.log, y =pop.log)) + geom_point() +
