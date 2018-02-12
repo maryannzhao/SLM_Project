@@ -50,7 +50,7 @@ ggplot (movies, aes(x=fitted(movies), y=resid(movies))) + geom_point()
 broom::tidy(movies, conf.int = TRUE, conf.level = 0.95)
 mill <- data.frame(bud.log=c(13.8))
 crit_val <- qt(.95, glance(movies)$df.resid)
-movie.pred <- augment(movies, newdata=mill, type.predict = "response")
+movie.pred <- broom::augment(movies, newdata=mill, type.predict = "response")
 .se.pred <- sqrt(glance(movies)$sigma^2 + movie.pred$.se.fit)
 
 movie.pred <- movie.pred %>%
@@ -64,10 +64,9 @@ movie.pred <- movie.pred %>%
          upper_CI = .fitted + crit_val * .se.fit)
 
 movie.pred
+```
 
-#mill2 <- data.frame(budget = c(1000000))
-#predict.lm(movies, newdata = mill2, interval = "confidence", level = .95)
-
+```{r, eval=TRUE}
 #R squared value
 summary(movies)$r.squared
 ```
@@ -83,20 +82,44 @@ movie_gl <- broom::glance(movies)
 movie_sig <- dplyr::pull(movie_gl, sigma)
 
 movie_pred <- broom::augment(movies) %>%
-mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
-mutate(lower_PI = .fitted - crit_val*.se.pred,
-upper_PI = .fitted + crit_val*.se.pred,
-lower_CI = .fitted - crit_val * .se.fit,
-upper_CI = .fitted + crit_val * .se.fit)
+  mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
+  mutate(lower_PI = .fitted - crit_val*.se.pred,
+  upper_PI = .fitted + crit_val*.se.pred,
+  lower_CI = .fitted - crit_val * .se.fit,
+  upper_CI = .fitted + crit_val * .se.fit)
 
 movie_pred %>% head()
 
-ggplot(movie_pred, aes(x =log.bud2.budget., y =log.bud2.popularity.)) + geom_point() +
-stat_smooth(method = "lm", se = FALSE) +
-geom_ribbon(aes(ymin = lower_PI, ymax = upper_PI), alpha = .2) +
-geom_ribbon(data = movie.pred, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red")
+ggplot(movie_pred, aes(x = bud.log, y =pop.log)) + geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  geom_ribbon(aes(ymin = lower_PI, ymax = upper_PI), alpha = .2) +
+  geom_ribbon(data = movie_pred, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red") +
+  xlab("log(budget)") + ylab("log(popularity)")
+```
+
+```{r, eval=TRUE}
+num_int <- 3
+crit_Bonf <- qt((1-.975)/num_int, glance(movies)$df.resid)
+crit_WH <- sqrt(2*qf(.95, num_int, glance(movies)$df.resid))
+
+movie_Bonf <- broom::augment(movies) %>%
+mutate(.se.pred = sqrt(movie_sig^2 + .se.fit^2)) %>%
+mutate(lower_PI = .fitted - crit_Bonf*.se.pred,
+upper_PI = .fitted + crit_Bonf*.se.pred,
+lower_CI = .fitted - crit_Bonf * .se.fit,
+upper_CI = .fitted + crit_Bonf * .se.fit)
+
+movie_Bonf %>% head()
+
+ggplot(movie_Bonf, aes(x = bud.log, y =pop.log)) + geom_point() +
+  stat_smooth(method = "lm", se = FALSE) +
+  geom_ribbon(aes(ymin = lower_PI, ymax = upper_PI), alpha = .2) +
+  geom_ribbon(data = movie_Bonf, aes(ymin = lower_CI, ymax = upper_CI), alpha = .2, fill = "red") +
+  xlab("log(budget)") + ylab("log(popularity)")
 
 ```
+
+```{r, eval=TRUE}
 working.hotelling.bonferroni.intervals <- function(x, y) {
   y <- as.matrix(y)
   if (ncol(y) > 1) {
