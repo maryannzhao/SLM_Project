@@ -55,4 +55,4 @@ To find the mean and prediction intervals for all n values, we used the Bonferro
 
 It's important to control for multiple comparisons, because the more variables you add, the more likely you are to get a "significant" difference, even though there isn't a real effect.
 
-It's most useful to use
+It's most useful to use 
