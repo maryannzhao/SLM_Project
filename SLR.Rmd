@@ -147,6 +147,5 @@ ggplot(movie_PI, aes(x = bud.log, y =pop.log)) + geom_point() +
 ```
 
 
-It's important to control for multiple comparisons, because the more variables you compare, the more likely you are to get a "significant" difference, even though there might not be a real effect. For this reason, it's important to have stricter measures of confidence when testing multiple variables. 
-When communicating results, 
+It's important to control for multiple comparisons, because the more variables you compare, the more likely you are to get a "significant" difference, even though there might not be a real effect. For this reason, it's important to have stricter measures of confidence when testing multiple variables. For mean intervals, it's most useful to use the Working-Hotelling procedure, because it uses the entire range of x's, whereas the Bonferroni only uses the intervals of interest. However, for prediction intervals, Bonferroni is better than Scheffe because it takes into account the multiple comparisons error. 
 
