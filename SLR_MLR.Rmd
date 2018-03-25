@@ -16,3 +16,27 @@ library(readr)
 options(digits=3)
 ```
 
+```{r}
+movies <- read_csv("~/LM HW/SLM_Project/tmdb_5000_movies-OG.csv")
+pairs(~popularity + budget + revenue + vote_average + runtime, data=movies, pch=19)
+
+library(stringr)
+test <- c("superman", "man", "table", "spider-man", "supermen","men")
+grepl("man|men", test)
+
+is.man <- grepl("man|men", movies$title)
+men.true <- c()
+for(i in is.man){
+  if(i == TRUE){
+    men.true <- append(1, men.true)
+  }else if (i == FALSE){
+    men.true <- append(0, men.true)
+  } else{
+    men.true <- append(3, men.true)
+  }
+}
+#men.true <- prepend(men.true, 1)
+#men.true <- men.true[2:4804]
+movies$men = rev(men.true)
+#mutate(movies, men=men.true)
+```
