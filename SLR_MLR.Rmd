@@ -18,8 +18,8 @@ options(digits=3)
 
 ```{r}
 movies <- read_csv("~/LM HW/SLM_Project/tmdb_5000_movies-OG.csv")
-pairs(~popularity + budget + revenue + vote_average + runtime, data=movies, pch=19)
 
+#Add variable if "man" or "men" is in the title
 library(stringr)
 test <- c("superman", "man", "table", "spider-man", "supermen","men")
 grepl("man|men", test)
@@ -35,8 +35,59 @@ for(i in is.man){
     men.true <- append(3, men.true)
   }
 }
-#men.true <- prepend(men.true, 1)
-#men.true <- men.true[2:4804]
 movies$men = rev(men.true)
-#mutate(movies, men=men.true)
+
+#Pairs plot
+pairs(~popularity + budget + revenue + vote_average + men, data=movies, pch=19)
+
+#residual plot for popularity vs. budget
+pop.budget <- lm(popularity ~ budget, data = movies)
+ggplot(pop.budget, aes(x=fitted(pop.budget), y=resid(pop.budget))) + geom_point()
+
+#requires log transformation so removing 0 values
+budget <- movies %>%
+  select(popularity, budget) %>%
+  filter(budget > 0, popularity > 0)
+
+pop.budget2 <- lm(log(popularity) ~ log(budget), data = budget)
+ggplot(pop.budget2, aes(x=fitted(pop.budget2), y=resid(pop.budget2))) + geom_point()
+
+#residual plot for popularity vs. revenue
+pop.rev <- lm(popularity ~ revenue, data = movies)
+ggplot(pop.rev, aes(x=fitted(pop.rev), y=resid(pop.rev))) + geom_point()
+
+#remove 0 values and log transform popularity and revenue
+revenue <- movies %>%
+  select(popularity, revenue) %>%
+  filter(revenue > 0, popularity > 0)
+pop.rev2 <- lm(log(popularity) ~ log(revenue), data = revenue)
+ggplot(pop.rev2, aes(x=fitted(pop.rev2), y=resid(pop.rev2))) + geom_point()
+
+#residual plot for popularity vs. vote average
+pop.vote <- lm(popularity ~ vote_average, data = movies)
+ggplot(pop.vote, aes(x=fitted(pop.vote), y=resid(pop.vote))) + geom_point()
+
+vote <- movies %>%
+  select(popularity, vote_average) %>%
+  filter(popularity > 0, vote_average >0)
+pop.vote2 <- lm(log(popularity) ~ vote_average, data = vote)
+ggplot(pop.vote2, aes(x=fitted(pop.vote2), y=resid(pop.vote2))) + geom_point()
+
+#residual plot for popularity and men
+pop.men <- lm(popularity ~ men, data = movies)
+ggplot(pop.men, aes(x=fitted(pop.men), y=resid(pop.men))) + geom_point()
+
+men <- movies %>%
+  select(popularity, men) %>%
+  filter(popularity > 0)
+pop.men2 <- lm(log(popularity) ~ men, data = men)
+ggplot(pop.men2, aes(x=fitted(pop.men2), y=resid(pop.men2))) + geom_point()
+
+
+#Create LM
+movies.lm <- lm(popularity ~ budget + revenue + vote_average + men, data=movies)
+summary(movies.lm)
+anova(movies.lm)
+tidy(movies.lm)
+plot(movies.lm)
 ```
