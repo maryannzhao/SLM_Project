@@ -1,5 +1,6 @@
 ---
 title: "SLR_MLR"
+authors: Maryann Zhao and Leyla Akay
 output: pdf_document
 ---
 
@@ -13,170 +14,82 @@ library(broom)
 library(mosaic)
 library(knitr)
 library(readr)
-library(graphics)
-library(GGally)
-require(lattice)
 options(digits=3)
 ```
+## Introduction:
+We are interested in finding out if we can predict a film's popularity from its initial budget, the revenue it generated, the average vote it was given online, and whether the title had the word "man" or "men" in it. Our data sources is from the Kaggle website https://www.kaggle.com/tmdb/tmdb-movie-metadata/data, which provides a comma-separated-value matrix of different information on five thousand movies.
 
-```{r}
-movies <- read_csv("~/LM HW/SLM_Project/tmdb_5000_movies-OG.csv")
+## Are any explanatory variables correlated?
+First, we wanted to get a sense of if and how the different variables were correlated with eachother. We used pair plots between each of the four variables to visually inspect this. Most appeared to be normally distributed and not correlated. However, budget and revenue were highly correlated (r = 0.73), which is not surprising, as a higher budget usually leads to famous actors and lots of advertising. 
 
-#Add variable if "man" or "men" is in the title
-library(stringr)
-test <- c("superman", "man", "table", "spider-man", "supermen","men")
-grepl("man|men", test)
+## Transforming the data 
+To make sure that the technical conditions were met, we checked the residual plots of each of the variables. The residual plot of popularity versus budget was neither constant nor linear, so we transformed both variables with a logarithmic function, which made the residuals evenly scattered around 0. To do this, we had to omit all the movies that had a budget of 0$, as these would have been undefined. Similarly, we log-transformed both popularity and revenue, omitting all values of zero. 
 
-is.man <- grepl("man|men", movies$title)
-men.true <- c()
-for(i in is.man){
-  if(i == TRUE){
-    men.true <- append(1, men.true)
-  }else if (i == FALSE){
-    men.true <- append(0, men.true)
-  } else{
-    men.true <- append(3, men.true)
-  }
-}
-movies$men = rev(men.true)
+The residuals for average vote versus popularity, and whether the title contained "Men" and popularity, were non constant, so we log-transformed only popularity in those cases. These transformations were sufficient to produce evenly scattered residual plots, so we did not include any further transformations.
 
-#Pairs plot
-panel.cor <- function(x, y, digits = 2, cex.cor, ...)
-{
-  usr <- par("usr"); on.exit(par(usr))
-  par(usr = c(0, 1, 0, 1))
-  # correlation coefficient
-  r <- cor(x, y)
-  txt <- format(c(r, 0.123456789), digits = digits)[1]
-  txt <- paste("r= ", txt, sep = "")
-  text(0.5, 0.6, txt)
+## Do any of the variables interact?
+We were curious if any of the variables interacted with eachother to modulate how they informed the response, Popularity. To test this, we compared the full model with variations that each had an interactive term. From these, we found that budget and revenue had a significant interaction, as did revenue and vote average. The other interactions were not significant. However, the two interactive terms were not significant together, and the more significant interaction, between revenue and budget, made the original 'revenue' term not significant. Therefore, we decided to not include the interactive terms, as they make the model difficult to interpret, and reduce the significance of the original variable itself. 
 
-}
-pairs(~popularity + budget + revenue + vote_average + men, data=movies, lower.panel=panel.cor, pch=19)
+## Building the model:
+Because our fitted model log-transformed popularity, budget, and revenue, we omitted all data points from those vectors that were 0. 
 
-#residual plot for popularity vs. budget
-pop.budget <- lm(popularity ~ budget, data = movies)
-ggplot(pop.budget, aes(x=fitted(pop.budget), y=resid(pop.budget))) + geom_point()
+#put in summary output here / tidy 
 
-#requires log transformation so removing 0 values
-budget <- movies %>%
-  select(popularity, budget) %>%
-  filter(budget > 0, popularity > 0)
+The $\beta$ values for the log-transformed Budget variable was 0.07389; for log-transformed revenue 0.275; for average vote, 0.335; and for men, 0.1311. All values except for "Men" were significant (had p-values less than 1e-10). 
+A doubling in budget or revenue is consistent with a multiplicative change in the median of popularity of 1.05 or 1.21, respectively. An increase in one unit of average vote is associated with a 1.4 multiplicative change in the median of popularity. 
 
-pop.budget2 <- lm(log(popularity) ~ log(budget), data = budget)
-ggplot(pop.budget2, aes(x=fitted(pop.budget2), y=resid(pop.budget2))) + geom_point()
+Because the p-value for the variable "Men" was 0.18, we decided that it probably does not inform a movie's popularity. Therefore, we decided to drop it from the model.
 
-#residual plot for popularity vs. revenue
-pop.rev <- lm(popularity ~ revenue, data = movies)
-ggplot(pop.rev, aes(x=fitted(pop.rev), y=resid(pop.rev))) + geom_point()
+## Evaluating the variables:
+To determine how necessary all the variables are for the model's success, we decided to compare the full model versus a model that only used Revenue and Average Vote as explanatory parameters. We dropped Men because it was not significant, and since Revenue and Budget are correlated, we decided to use only one. We thought that Revenue (the amount of money a movie produces) would be a better descriptor than Budget (how much money goes into a movie). 
 
-#remove 0 values and log transform popularity and revenue
-revenue <- movies %>%
-  select(popularity, revenue) %>%
-  filter(revenue > 0, popularity > 0)
-pop.rev2 <- lm(log(popularity) ~ log(revenue), data = revenue)
-ggplot(pop.rev2, aes(x=fitted(pop.rev2), y=resid(pop.rev2))) + geom_point()
+#put in anova 
 
-#residual plot for popularity vs. vote average
-pop.vote <- lm(popularity ~ vote_average, data = movies)
-ggplot(pop.vote, aes(x=fitted(pop.vote), y=resid(pop.vote))) + geom_point()
+We used an F-test to analyze the variance of the two models. The f-statistic was 20.5, which is much higher than 1 (p value < 1e-9). Therefore, at least one of the variables in our full model is significant. We are not sure which one, if any, is insignificant, so at this point we would report the full model to our boss. Parsimony is good, but precision is better. 
 
-vote <- movies %>%
-  select(popularity, vote_average) %>%
-  filter(popularity > 0, vote_average >0)
-pop.vote2 <- lm(log(popularity) ~ vote_average, data = vote)
-ggplot(pop.vote2, aes(x=fitted(pop.vote2), y=resid(pop.vote2))) + geom_point()
+The $R^2$ of the full model is 0.461, and the adjusted is 0.46. 46% of the variation in the popularity can be explained by the four predictor variables: revenue, budget and average vote, and "Men". The adjusted R^2 penalizes for the number of variables, but since we only have four, the decrease isn't that large. 
 
-#residual plot for popularity and men
-pop.men <- lm(popularity ~ men, data = movies)
-ggplot(pop.men, aes(x=fitted(pop.men), y=resid(pop.men))) + geom_point()
+Note: this $\R^2$ does not necessarily indicate how well the model will be at predicting future data. To make sure the $\R^2$ isn't artificially inflated by outliers or leverage points, we performed diagnostic measures to determine if there are any influential points. 
 
-men <- movies %>%
-  select(popularity, men) %>%
-  filter(popularity > 0)
-pop.men2 <- lm(log(popularity) ~ men, data = men)
-ggplot(pop.men2, aes(x=fitted(pop.men2), y=resid(pop.men2))) + geom_point()
+The first diagnostic we did was check the residual and leverage plot to identify any influential outliers. We decided to use a Cook's distance of 0.5 as a cut-off for determining influentiality; none of the points were greater than that. However, out of curiousity, we picked a data point that was close to the cut-off point. Without that data point, the estimates of the parameters did not change. So, there aren't any influential outliers in the dataset. 
+#put in cook's distance plot
+
+## Final model
+We performed forward- and backwards- stepwise selections, which both resulted in the same model:
+E(Y) = -5.287 + 0.275 ln(Revenue) + 0.074 ln(Budget) + 0.335 (Vote Average) 
+As an example of the backwards selection, we started with the full model that included all four explanatory variables. We dropped the "Men" variable first, as its F-statistic was non significant. After dropping it, all the other variables' F-statistics were significant, so we kept them. 
+
+#drop1 here 
+
+## Coefficient of partial determinations
+$R^2_{revenue|budget, vote} = 0.424$
+$R^2_{budget|revenue, vote} = 0.012$
+$R^2_{vote|budget, revenue} = 0.0965$
+
+The variability (in the natural log of the Popularity) remaining after modelling log of the Popularity using log of the Budget and Vote, is reduced by 42.4% when we include the variable log of Revenue. 
+The variability (in the natural log of the Popularity) remaining after modelling log of the Popularity using log of the Revenue and Vote, is reduced by 1.2% when we include the variable log of Budget. 
+The variability (in the natural log of the Popularity) remaining after modelling log of the Popularity using log of the Budget and log of Revenue, is reduced by 9.65% when we include the variable of Vote. 
+This gives us a sense that the variable Revenue is most important of the three variables in predicting Popularity.
+
+## Interpreting the final model
+Our final model included three explanatory variables to predict a movie's popularity: its budget, its average vote, and the revenue it made. After testing variables' significance, we decided to drop the variable "Man", a categorical measure of whether or not a film's title had "Man" or "Men" in it (eg "IronMan"; "Spider-Man"). We originally thought that movies with "Man" in their title woudld be action or superhero movies, which are usually popular and high-profile productions. Also, we were interested in whether people are biased in their movie choices and would rather see movies featuring Men. 
+
+With the three explanatory variables, our model  explains 46% of the variance in a movie's popularity. ALthough this may seem low, the popularity score is based on activities like views, votes, and being added to users' watchlists, which are all human behavior and hard to predict mathematically. 
+
+## Using our model to predict popularity
+Finally, we were interested in seeing how well our model performs, by using it to predict popularity.
+
+We decided to test it on our favorite movie, the classic "Evan Almighty." Evan had a budget of $175M, generated revenue of $173M, and an average vote of 5.3. 
+Plugging those values into our model gives us a mean prediction value of :
+ln (Expected Popularity) = -5.287 + (0.275) ln(175 000 000) + 0.074 ln (173 000 000 ) + 0.335 (5.3)
+= 3.12, with a prediction interval of 1.49 to 4.75 and a confidence interval of 3.07 to 3.18.
+These values can be interpreted as a fitted popularity score of 22.6, with a 95% confidence interval of 21.5 to 24, and 95% prediction interval 4.44 and 116. We are 95% confident that the true mean popularity score lies between 21.5 and 24, and 95% of the popularity scores of movies with the given revenue, budget and vote average, are between 4.44 and 116. 
+The actual popularity score of Evan Almighty was 27.02, which falls within the prediction interval.
+
+## Conclusions
+Our aim for this project was to predict a film's popularity given its revenue, budget, average vote, and whether it had the word "Man" in its title. We were able to build a model using the first three variables that successfully explains 46% of the variance within the popularity scores of a database of 5,000 movies. 
+There are probably several factors that describe a movie's popularity, including ones that were not in the dataset itself (i.e. number of awards) and ones that were too complex to code into a model (i.e. genre). However, despite these additional variables that would probably have contributed to a model's accuracy, we were able to reasonably predict a movie's popularity within a 95% prediction interval. 
 
 
-#Create LM
-movies.new <- movies %>%
-  select(popularity, men, budget, revenue, vote_average) %>%
-  filter(popularity > 0, budget > 0, revenue > 0)
-movies.lm <- lm(log(popularity) ~ log(budget) + log(revenue) + vote_average + men, data=movies.new)
-summary(movies.lm)
-
-#interaction
-movies.br.int <- lm(log(popularity) ~ log(budget) * log(revenue) + vote_average + men, data=movies.new)
-movies.rv.int <- lm(log(popularity) ~ log(budget) + log(revenue) * vote_average + men, data=movies.new)
-movies.bv.int <- lm(log(popularity) ~ log(budget) * vote_average + log(revenue) + men, data=movies.new)
-movies.int <- lm(log(popularity) ~ log(budget) * vote_average + log(revenue)*log(budget) + men, data=movies.new)
-anova(movies.lm, movies.br.int)
-anova(movies.lm, movies.rv.int)
-anova(movies.lm, movies.bv.int)
-anova(movies.int, movies.lm)
-anova(movies.br.int)
-anova(movies.rv.int)
-anova(movies.bv.int)
-anova(movies.int)
-summary(movies.int)
-
-#betas
-summary(movies.br.int)
-tidy(movies.br.int)
-
-#LM minus budget and men 
-movies.lm.red <- lm(log(popularity) ~ log(revenue) + vote_average, data=movies.new)
-
-#F test comparing full and reduced model without budget and men
-anova(movies.lm, movies.lm.red)
-
-#R2 and adj R2
-summary(movies.lm)
-
-#remove influential point
-movies.new2 <- movies.new[-c(2652),]
-movies.lm2 <- lm(log(popularity) ~ log(budget) + log(revenue) + vote_average + men, data=movies.new2)
-summary(movies.lm2)
-
-#residual plots
-plot(movies.lm)
-plot(movies.lm2)
-
-#add 
-add1(lm(log(popularity)~log(revenue), data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
-add1(lm(log(popularity)~log(revenue)+vote_average, data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
-add1(lm(log(popularity)~log(revenue)+vote_average+log(budget), data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
-
-#drop 
-drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + men, data=movies.new), test="F")
-drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new), test="F")
-
-final.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
-plot(final.lm)
-ggplot(final.lm, aes(x=fitted(final.lm), y=resid(final.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
-ggplot(movies.lm, aes(x=fitted(movies.lm), y=resid(movies.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
-#final model
-summary(final.lm)
-
-newmovie <- data.frame(budget=c(175000000), revenue=c(173000000), vote_average=c(5.3))
-crit_val <- qt(.975, glance(final.lm)$df.resid)
-movie_pred <- augment(final.lm, newdata=newmovie, type.predict = "response")
-# the SE of the predictions also include the overall variability of the model
-.se.pred <- sqrt(glance(final.lm)$sigma^2 + movie_pred$.se.fit)
-movie_pred <- movie_pred %>%
-mutate(lower_PI = .fitted - crit_val * .se.pred,
-upper_PI = .fitted + crit_val * .se.pred,
-lower_CI = .fitted - crit_val * .se.fit,
-upper_CI = .fitted + crit_val * .se.fit)
-movie_pred
-
-#coefficients of partial determination
-anova.lm <- anova(final.lm)
-anova.lm
-anova.lm[1,2]/(anova.lm[1,2]+anova.lm[4,2])
-anova.lm[3,2]/(anova.lm[3,2]+anova.lm[4,2])
-anova.lm[2,2]/(anova.lm[2,2]+anova.lm[4,2])
-```
-$R^2_{revenue|budget, vote}$
-$R^2_{budget|revenue, vote}$
-$R^2_{vote|budget, revenue}$
+## Addendum: Multiple comparisons
+We used a total of 13 hypothesis tests during the course of the experiment. When we adjust our p-values by multiplying by this number, 13, none reach significance. Therefore, although we tested for different hypotheses at the same time, we do not run into the problem of multiple comparisons.
