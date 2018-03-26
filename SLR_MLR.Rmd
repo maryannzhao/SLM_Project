@@ -118,6 +118,7 @@ anova(movies.br.int)
 anova(movies.rv.int)
 anova(movies.bv.int)
 anova(movies.int)
+summary(movies.int)
 
 #betas
 summary(movies.br.int)
@@ -153,7 +154,29 @@ drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movie
 final.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
 plot(final.lm)
 ggplot(final.lm, aes(x=fitted(final.lm), y=resid(final.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
-ggplot(movies.lm, aes(x=fitted(movies.lm), y=resid(movies.lm))) + geom_point() 
+ggplot(movies.lm, aes(x=fitted(movies.lm), y=resid(movies.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
 #final model
 summary(final.lm)
+
+newmovie <- data.frame(budget=c(175000000), revenue=c(173000000), vote_average=c(5.3))
+crit_val <- qt(.975, glance(final.lm)$df.resid)
+movie_pred <- augment(final.lm, newdata=newmovie, type.predict = "response")
+# the SE of the predictions also include the overall variability of the model
+.se.pred <- sqrt(glance(final.lm)$sigma^2 + movie_pred$.se.fit)
+movie_pred <- movie_pred %>%
+mutate(lower_PI = .fitted - crit_val * .se.pred,
+upper_PI = .fitted + crit_val * .se.pred,
+lower_CI = .fitted - crit_val * .se.fit,
+upper_CI = .fitted + crit_val * .se.fit)
+movie_pred
+
+#coefficients of partial determination
+anova.lm <- anova(final.lm)
+anova.lm
+anova.lm[1,2]/(anova.lm[1,2]+anova.lm[4,2])
+anova.lm[3,2]/(anova.lm[3,2]+anova.lm[4,2])
+anova.lm[2,2]/(anova.lm[2,2]+anova.lm[4,2])
 ```
+$R^2_{revenue|budget, vote}$
+$R^2_{budget|revenue, vote}$
+$R^2_{vote|budget, revenue}$
