@@ -13,6 +13,9 @@ library(broom)
 library(mosaic)
 library(knitr)
 library(readr)
+library(graphics)
+library(GGally)
+require(lattice)
 options(digits=3)
 ```
 
@@ -38,7 +41,18 @@ for(i in is.man){
 movies$men = rev(men.true)
 
 #Pairs plot
-pairs(~popularity + budget + revenue + vote_average + men, data=movies, pch=19)
+panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+
+}
+pairs(~popularity + budget + revenue + vote_average + men, data=movies, lower.panel=panel.cor, pch=19)
 
 #residual plot for popularity vs. budget
 pop.budget <- lm(popularity ~ budget, data = movies)
@@ -85,9 +99,61 @@ ggplot(pop.men2, aes(x=fitted(pop.men2), y=resid(pop.men2))) + geom_point()
 
 
 #Create LM
-movies.lm <- lm(popularity ~ budget + revenue + vote_average + men, data=movies)
+movies.new <- movies %>%
+  select(popularity, men, budget, revenue, vote_average) %>%
+  filter(popularity > 0, budget > 0, revenue > 0)
+movies.lm <- lm(log(popularity) ~ log(budget) + log(revenue) + vote_average + men, data=movies.new)
 summary(movies.lm)
-anova(movies.lm)
-tidy(movies.lm)
+
+#interaction
+movies.br.int <- lm(log(popularity) ~ log(budget) * log(revenue) + vote_average + men, data=movies.new)
+movies.rv.int <- lm(log(popularity) ~ log(budget) + log(revenue) * vote_average + men, data=movies.new)
+movies.bv.int <- lm(log(popularity) ~ log(budget) * vote_average + log(revenue) + men, data=movies.new)
+movies.int <- lm(log(popularity) ~ log(budget) * vote_average + log(revenue)*log(budget) + men, data=movies.new)
+anova(movies.lm, movies.br.int)
+anova(movies.lm, movies.rv.int)
+anova(movies.lm, movies.bv.int)
+anova(movies.int, movies.lm)
+anova(movies.br.int)
+anova(movies.rv.int)
+anova(movies.bv.int)
+anova(movies.int)
+
+#betas
+summary(movies.br.int)
+tidy(movies.br.int)
+
+#LM minus budget and men 
+movies.lm.red <- lm(log(popularity) ~ log(revenue) + vote_average, data=movies.new)
+
+#F test comparing full and reduced model without budget and men
+anova(movies.lm, movies.lm.red)
+
+#R2 and adj R2
+summary(movies.lm)
+
+#remove influential point
+movies.new2 <- movies.new[-c(2652),]
+movies.lm2 <- lm(log(popularity) ~ log(budget) + log(revenue) + vote_average + men, data=movies.new2)
+summary(movies.lm2)
+
+#residual plots
 plot(movies.lm)
+plot(movies.lm2)
+
+#add 
+add1(lm(log(popularity)~log(revenue), data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
+add1(lm(log(popularity)~log(revenue)+vote_average, data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
+add1(lm(log(popularity)~log(revenue)+vote_average+log(budget), data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
+
+#drop 
+drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + men, data=movies.new), test="F")
+drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new), test="F")
+
+final.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
+plot(final.lm)
+ggplot(final.lm, aes(x=fitted(final.lm), y=resid(final.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
+ggplot(movies.lm, aes(x=fitted(movies.lm), y=resid(movies.lm))) + geom_point() 
+#final model
+summary(final.lm)
 ```
