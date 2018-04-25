@@ -1,12 +1,62 @@
 ---
 title: "Final Project"
 output: pdf_document
+authors: Leyla Akay and Maryann Zhao
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align = "center")
+library(dplyr)
+library(ggplot2)
+library(infer)
+library(skimr)
+library(broom)
+library(mosaic)
+library(knitr)
+library(readr)
+library(graphics)
+library(GGally)
+require(lattice)
+library(readr)
+library(purrr)
+options(digits=3)
 ```
+```{r}
+movies <- read_csv("~/LM HW/SLM_Project/tmdb_2.csv")
 
+lang.table <- purrr::map(movies$spoken_languages, jsonlite::fromJSON)
+lang.table <- purrr::map_df(lang.table, ~data.frame(x=.x), .id="movieID")
+lang <- c()
+count <- 1
+#for(i in lang.table){
+#  if(as.numeric(lang.table[i,1]) == count){
+#    lang <- append(lang.table$x.name, lang)
+#    count = count + 1
+#  }
+#}
+
+dates <- as.Date(movies$release_date, "%m/%d/%y")
+dates <- as.numeric(substring(dates, 1, 4))
+movies <- movies %>%
+  mutate(years = dates, lang = lang.table$x.name) 
+
+#group action/adventure, family/comedy/animation, science fiction/fantasy, horror/thriller, crime/mystery, romantic
+
+#dates after the year 2007
+
+#Remove 0 values
+movies.new <- movies %>%
+  select(popularity, men, budget, revenue, vote_average, genres1, production_company1, years) %>%
+  filter(budget > 0, revenue > 0)
+
+pop.gen1 <- lm(log(popularity) ~ genres1, data = movies.new)
+ggplot(pop.gen1, aes(x=fitted(pop.gen1), y=resid(pop.gen1))) + geom_point()
+
+movies.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
+plot(final.lm)
+summary(final.lm)
+
+```
 Introduction: 
 In this project, we are interested in determining whether we can predict how "popular" a film will be, given relevant information. Although popularity is inherently difficult to quantify, we relied upon Popularity Scores from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), an index based on online votes, clicks, and 'likes'. To predict such popularity scores, we utilized the variables of budget, revenue, and average critic's vote. All information used in this study was sourced from The Movie Database. The movies included in this database 
 
