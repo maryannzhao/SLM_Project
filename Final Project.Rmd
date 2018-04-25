@@ -1,28 +1,180 @@
 ---
 title: "Final Project"
 output: pdf_document
+authors: Leyla Akay and Maryann Zhao
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align = "center")
+library(dplyr)
+library(ggplot2)
+library(infer)
+library(skimr)
+library(broom)
+library(mosaic)
+library(knitr)
+library(readr)
+library(graphics)
+library(GGally)
+require(lattice)
+options(digits=3)
 ```
 
-## R Markdown
+```{r}
+movies <- read_csv("~/LM HW/SLM_Project/tmdb_5000_movies-OG.csv")
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+#Add variable if "man" or "men" is in the title
+library(stringr)
+test <- c("superman", "man", "table", "spider-man", "supermen","men")
+grepl("man|men", test)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+is.man <- grepl("man|men", movies$title)
+men.true <- c()
+for(i in is.man){
+  if(i == TRUE){
+    men.true <- append(1, men.true)
+  }else if (i == FALSE){
+    men.true <- append(0, men.true)
+  } else{
+    men.true <- append(3, men.true)
+  }
+}
+movies$men = rev(men.true)
 
-```{r cars}
-summary(cars)
+#Pairs plot
+panel.cor <- function(x, y, digits = 2, cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+
+}
+pairs(~popularity + budget + revenue + vote_average + men, data=movies, lower.panel=panel.cor, pch=19)
+
+#residual plot for popularity vs. budget
+pop.budget <- lm(popularity ~ budget, data = movies)
+ggplot(pop.budget, aes(x=fitted(pop.budget), y=resid(pop.budget))) + geom_point()
+
+#requires log transformation so removing 0 values
+budget <- movies %>%
+  select(popularity, budget) %>%
+  filter(budget > 0, popularity > 0)
+
+pop.budget2 <- lm(log(popularity) ~ log(budget), data = budget)
+ggplot(pop.budget2, aes(x=fitted(pop.budget2), y=resid(pop.budget2))) + geom_point()
+
+#residual plot for popularity vs. revenue
+pop.rev <- lm(popularity ~ revenue, data = movies)
+ggplot(pop.rev, aes(x=fitted(pop.rev), y=resid(pop.rev))) + geom_point()
+
+#remove 0 values and log transform popularity and revenue
+revenue <- movies %>%
+  select(popularity, revenue) %>%
+  filter(revenue > 0, popularity > 0)
+pop.rev2 <- lm(log(popularity) ~ log(revenue), data = revenue)
+ggplot(pop.rev2, aes(x=fitted(pop.rev2), y=resid(pop.rev2))) + geom_point()
+
+#residual plot for popularity vs. vote average
+pop.vote <- lm(popularity ~ vote_average, data = movies)
+ggplot(pop.vote, aes(x=fitted(pop.vote), y=resid(pop.vote))) + geom_point()
+
+vote <- movies %>%
+  select(popularity, vote_average) %>%
+  filter(popularity > 0, vote_average >0)
+pop.vote2 <- lm(log(popularity) ~ vote_average, data = vote)
+ggplot(pop.vote2, aes(x=fitted(pop.vote2), y=resid(pop.vote2))) + geom_point()
+
+#residual plot for popularity and men
+pop.men <- lm(popularity ~ men, data = movies)
+ggplot(pop.men, aes(x=fitted(pop.men), y=resid(pop.men))) + geom_point()
+
+men <- movies %>%
+  select(popularity, men) %>%
+  filter(popularity > 0)
+pop.men2 <- lm(log(popularity) ~ men, data = men)
+ggplot(pop.men2, aes(x=fitted(pop.men2), y=resid(pop.men2))) + geom_point()
+
+
+#Create LM
+movies.new <- movies %>%
+  select(popularity, men, budget, revenue, vote_average) %>%
+  filter(popularity > 0, budget > 0, revenue > 0)
+movies.lm <- lm(log(popularity) ~ log(budget) + log(revenue) + vote_average + men, data=movies.new)
+summary(movies.lm)
+
+#interaction
+movies.br.int <- lm(log(popularity) ~ log(budget) * log(revenue) + vote_average + men, data=movies.new)
+movies.rv.int <- lm(log(popularity) ~ log(budget) + log(revenue) * vote_average + men, data=movies.new)
+movies.bv.int <- lm(log(popularity) ~ log(budget) * vote_average + log(revenue) + men, data=movies.new)
+movies.int <- lm(log(popularity) ~ log(budget) * vote_average + log(revenue)*log(budget) + men, data=movies.new)
+anova(movies.lm, movies.br.int)
+anova(movies.lm, movies.rv.int)
+anova(movies.lm, movies.bv.int)
+anova(movies.int, movies.lm)
+anova(movies.br.int)
+anova(movies.rv.int)
+anova(movies.bv.int)
+anova(movies.int)
+summary(movies.int)
+
+#betas
+summary(movies.br.int)
+tidy(movies.br.int)
+
+#LM minus budget and men 
+movies.lm.red <- lm(log(popularity) ~ log(revenue) + vote_average, data=movies.new)
+
+#F test comparing full and reduced model without budget and men
+anova(movies.lm, movies.lm.red)
+
+#R2 and adj R2
+summary(movies.lm)
+
+#remove influential point
+movies.new2 <- movies.new[-c(2652),]
+movies.lm2 <- lm(log(popularity) ~ log(budget) + log(revenue) + vote_average + men, data=movies.new2)
+summary(movies.lm2)
+
+#residual plots
+plot(movies.lm)
+plot(movies.lm2)
+
+#add 
+add1(lm(log(popularity)~log(revenue), data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
+add1(lm(log(popularity)~log(revenue)+vote_average, data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
+add1(lm(log(popularity)~log(revenue)+vote_average+log(budget), data=movies.new), log(popularity) ~ log(revenue) + vote_average + log(budget) + men, test="F")
+
+#drop 
+drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + men, data=movies.new), test="F")
+drop1(lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new), test="F")
+
+final.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
+plot(final.lm)
+ggplot(final.lm, aes(x=fitted(final.lm), y=resid(final.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
+ggplot(movies.lm, aes(x=fitted(movies.lm), y=resid(movies.lm))) + geom_point() + xlab("fitted popularity") + ylab("residuals")
+#final model
+summary(final.lm)
+
+newmovie <- data.frame(budget=c(175000000), revenue=c(173000000), vote_average=c(5.3))
+crit_val <- qt(.975, glance(final.lm)$df.resid)
+movie_pred <- augment(final.lm, newdata=newmovie, type.predict = "response")
+# the SE of the predictions also include the overall variability of the model
+.se.pred <- sqrt(glance(final.lm)$sigma^2 + movie_pred$.se.fit)
+movie_pred <- movie_pred %>%
+mutate(lower_PI = .fitted - crit_val * .se.pred,
+upper_PI = .fitted + crit_val * .se.pred,
+lower_CI = .fitted - crit_val * .se.fit,
+upper_CI = .fitted + crit_val * .se.fit)
+movie_pred
+
+#coefficients of partial determination
+anova.lm <- anova(final.lm)
+anova.lm
+anova.lm[1,2]/(anova.lm[1,2]+anova.lm[4,2])
+anova.lm[3,2]/(anova.lm[3,2]+anova.lm[4,2])
+anova.lm[2,2]/(anova.lm[2,2]+anova.lm[4,2])
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
