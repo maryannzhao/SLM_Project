@@ -7,22 +7,25 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+Introduction: 
+In this project, we are interested in determining whether we can predict how "popular" a film will be, given relevant information. Although popularity is inherently difficult to quantify, we relied upon Popularity Scores from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), an index based on online votes, clicks, and 'likes'. To predict such popularity scores, we utilized the variables of budget, revenue, and average critic's vote. All information used in this study was sourced from The Movie Database. The movies included in this database 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Part one
+-lasso and ridge regression; use cross-validation to find a value for lambda; compare it to the model from the last part
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+-have a plot overlaying mlr (from last time), ridge regression, lasso
 
-```{r cars}
-summary(cars)
-```
+-choose one variable, and run spline and kernel smoothing methods. in total there are 4 models for each method (1 for each parameter?). plot these all together. which one, and why?
 
-## Including Plots
+-  
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+questions:
+-what variables do we want to include? pop~revenue, vote avg, budget, genre (group them?)
+- how do we group genres? what's the best way to do this / code this. do we have 5 factor variables? and what if some become null (history) -do we filter or include them?
+- dates after the year 2007. 
+- how to extract language from the list ?
+- is it ok to just put in the new variables...
+- ask q's about previous assignment - residual plot when to studentize vs. standardize ; mean vs. median ...
+- production company - how to make a choice for criteria , deciding if a production company is 'major' or not. 
+- dimensionality reduction methods? it would be cool to do ICA or PCA on this data (bc company is probably correlated with budget) etc.
