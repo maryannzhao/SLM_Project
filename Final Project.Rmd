@@ -34,23 +34,30 @@ movies <- read_csv("~/LM HW/SLM_Project/tmdb_2.csv")
 #movies <- movies %>%
 #  mutate(lang=lang.table)
   
-
+#dates after the year 2007
 dates <- as.Date(movies$release_date, "%m/%d/%y")
 dates <- as.numeric(substring(dates, 1, 4))
 movies <- movies %>%
   mutate(years = dates) 
 oh7 <- c()
 for (i in 1:4803){
- oh7<- append(ifelse(movies$years[i] >= 2007, 1, 0), oh7)
+ oh7[i]<- ifelse(movies$years[i] >= 2007, 1, 0)
 }
-oh7 <- rev(oh7)
 movies <- movies %>%
   mutate(oh7 = oh7)
 
 
-#group action/adventure, family/comedy/animation, science fiction/fantasy, horror/thriller, crime/mystery, romantic
+#check first 2 genres to see if they are action, adventure or drama based on most popular genres (website)
+action <- c()
+adv <- c()
+drama <- c()
+for (i in 1:4803){
+ action[i] <- ifelse(movies$genres1[i] == "Action" | movies$genres2[i] == "Action", 1, 0)
+ action[i] <- ifelse(is.nan(action[i]) | is.na(action[i]), 0, action[i])
+}
 
-#dates after the year 2007
+
+
 
 #Remove 0 values
 movies.new <- movies %>%
