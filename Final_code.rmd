@@ -1,0 +1,78 @@
+---
+title: "Final Project"
+output: pdf_document
+authors: Leyla Akay and Maryann Zhao
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align = "center")
+library(dplyr)
+library(ggplot2)
+library(infer)
+library(skimr)
+library(broom)
+library(mosaic)
+library(knitr)
+library(readr)
+library(graphics)
+library(GGally)
+require(lattice)
+library(readr)
+library(purrr)
+options(digits=3)
+```
+
+```{r}
+movies <- read_csv("~/LM HW/SLM_Project/tmdb_2.csv")
+
+#lang.table <- purrr::map(movies$spoken_languages, jsonlite::fromJSON)
+#lang.table <- purrr::map_df(lang.table, ~data.frame(x=.x), .id="movieID")
+#lang.table <- lang.table %>%
+#  group_by(movieID) %>%
+#  top_n(1, x.name)
+#lang.table <- lang.table[3] %>% pull()
+#movies <- movies %>%
+#  mutate(lang=lang.table)
+  
+#dates after the year 2007
+dates <- as.Date(movies$release_date, "%m/%d/%y")
+dates <- as.numeric(substring(dates, 1, 4))
+movies <- movies %>%
+  mutate(years = dates) 
+oh7 <- c()
+for (i in 1:4803){
+ oh7[i]<- ifelse(movies$years[i] >= 2007, 1, 0)
+}
+movies <- movies %>%
+  mutate(oh7 = oh7)
+
+
+#check first 2 genres to see if they are action, adventure or drama based on most popular genres (website)
+action <- c()
+adv <- c()
+drama <- c()
+for (i in 1:4803){
+ action[i] <- ifelse(movies$genres1[i] == "Action" | movies$genres2[i] == "Action", 1, 0)
+ action[i] <- ifelse(is.nan(action[i]) | is.na(action[i]), 0, action[i])
+}
+
+
+
+
+#Remove 0 values
+movies.new <- movies %>%
+  select(popularity, men, budget, revenue, vote_average, genres1, production_company1, years) %>%
+  filter(budget > 0, revenue > 0)
+
+pop.gen1 <- lm(log(popularity) ~ genres1, data = movies.new)
+ggplot(pop.gen1, aes(x=fitted(pop.gen1), y=resid(pop.gen1))) + geom_point()
+
+movies.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
+plot(final.lm)
+summary(final.lm)
+
+```
+
+
+
+
