@@ -61,14 +61,17 @@ movies <- movies %>%
   mutate(oh7 = oh7, action = action, adv = adv, drama = drama, lang = lang)
 
 #Remove 0 values
+movies.genre <-movies %>%
+  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang, genres1) %>%
+  filter(budget > 0, revenue > 0, vote_count > 0)
 movies.new <- movies %>%
-  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang) %>%
+  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang, genres1) %>%
   filter(budget > 0, revenue > 0, vote_count > 0)
 
 #logged variables
 movies.log <- movies.new %>%
   mutate(pop.log = log(popularity), rev.log = log(revenue), bud.log = log(budget), count.log = log(vote_count), rev.bud.int = log(budget)*log(revenue))%>%
-  select(pop.log, rev.log, vote_average, bud.log, count.log, oh7, adv, action, drama, lang, rev.bud.int)
+  select(pop.log, rev.log, vote_average, bud.log, count.log, oh7, adv, action, drama, lang, rev.bud.int, genres1)
 
 #rename variables for function
 test.new<- test %>%
@@ -157,57 +160,25 @@ movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (met
 count.lor <- loess(pop.log ~ count.log, span=.2, data=movies.log)
 
 #PCA
+library(ggfortify)
 movies.cont<- movies.log %>%
-  select(rev.log, vote_average, bud.log, count.log)
+  select(rev.log, vote_average, bud.log, count.log, genres1)
+pca <- prcomp(movies.cont[1:4], scale. = T, center = TRUE)
+autoplot(pca, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 3, colours = 'genre1', data = movies.cont)
+ggplot(pca, aes(x=PC1, y=PC2))+
+  geom_point()
 
-pca <- prcomp(movies.cont, scale. = T, center = TRUE)
+pca.data <- data.frame(pca$x, genre = movies.cont$genres1)
 
-library(devtools)
-#install_github("ggbiplot", "vqv")
- 
-library(ggbiplot)
-g <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = movies.cont$rev.log, ellipse = TRUE, 
-              circle = TRUE)
-g <- g + scale_color_discrete(name = '')
-g <- g + theme(legend.direction = 'horizontal', 
-               legend.position = 'top')
-print(g)
+pca.data <- pca.data %>%
+  mutate(genre2 = ifelse(genre %in% c( "Action", "Adventure", "Drama"), genre, "other"))
 
-pca <- PCA(movies.cont, graph = TRUE)
-pca$eig
-
-scatter3D(pca$eig[1], pca$eig[2], pca$eig[3], colvar = NULL, col = "blue",
-          pch = 19, cex = 0.5)
-
-pca <- prcomp(t(movies.cont), scale=TRUE)
-fit <- hclust(dist(pca$x[,1:4]), method="complete") # 1:3 -> based on 3 components
-groups <- cutree(fit, k=4)  
-library(rgl)
-plotPCA <- function(x, nGroup) {
-    n <- ncol(x) 
-    if(!(n %in% c(2,3))) { # check if 2d or 3d
-        stop("x must have either 2 or 3 columns")
-    }
-
-    fit <- hclust(dist(x), method="complete") # cluster
-    groups <- cutree(fit, k=nGroup)
-
-    if(n == 3) { # 3d plot
-        plot3D(x, col=groups, type="s", size=1, axes=F)
-        axes3d(edges=c("x--", "y--", "z"), lwd=3, axes.len=2, labels=FALSE)
-        grid3d("x")
-        grid3d("y")
-        grid3d("z")
-    } else { # 2d plot
-        maxes <- apply(abs(x), 2, max)
-        rangeX <- c(-maxes[1], maxes[1])
-        rangeY <- c(-maxes[2], maxes[2])
-        plot(x, col=groups, pch=19, xlab=colnames(x)[1], ylab=colnames(x)[2], xlim=rangeX, ylim=rangeY)
-        lines(c(0,0), rangeX*2)
-        lines(rangeY*2, c(0,0))
-    }
-}
-plotPCA(pca$x[,1:3], 4)
+# plot of PCA
+ggplot(pca.data,aes(x=PC1,y=PC2,col=genre2))+
+   geom_point(size=2,alpha=0.5)+ #Size and alpha just for fun
+   scale_color_manual(values = rainbow(4))+ #your colors here
+   theme_classic()+
+   ggtitle("PCA plot of Movies")
 
 #logistic regression
 library(caTools)
@@ -216,12 +187,6 @@ summary(model)
 
 ggplot(movies.log, aes(x=rev.log, y=action)) + geom_point() + 
   stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)
-
-fit = glm(action ~ rev.log, data=movies.log, family=binomial)
-newdat <- data.frame(rev.log=seq(min(movies.log$rev.log), max(movies.log$rev.log)),len=100)
-newdat$action = predict(fit, newdata=newdat, type="response")
-plot(action ~ rev.log, data=movies.log, col="red4")
-lines(action ~ rev.log, newdat, col="green4", lwd=2)
 
 ```
 
