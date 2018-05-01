@@ -1,0 +1,98 @@
+---
+title: "Final Project"
+output: pdf_document
+authors: Leyla Akay and Maryann Zhao
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align = "center")
+library(dplyr)
+library(ggplot2)
+library(infer)
+library(skimr)
+library(broom)
+library(mosaic)
+library(knitr)
+library(readr)
+library(graphics)
+library(GGally)
+require(lattice)
+library(readr)
+library(purrr)
+options(digits=3)
+```
+
+```{r}
+movies <- read_csv("~/LM HW/SLM_Project/tmdb_2.csv")
+
+#lang.table <- purrr::map(movies$spoken_languages, jsonlite::fromJSON)
+#lang.table <- purrr::map_df(lang.table, ~data.frame(x=.x), .id="movieID")
+#lang.table <- lang.table %>%
+#  group_by(movieID) %>%
+#  top_n(1, x.name)
+#lang.table <- lang.table[3] %>% pull()
+#movies <- movies %>%
+#  mutate(lang=lang.table)
+
+#original language english
+lang <- c()
+for (i in 1:4803){
+ lang[i]<- ifelse(movies$original_language[i] == "en", 1, 0)
+}
+  
+#dates after the year 2007
+dates <- as.Date(movies$release_date, "%m/%d/%y")
+dates <- as.numeric(substring(dates, 1, 4))
+movies <- movies %>%
+  mutate(years = dates) 
+oh7 <- c()
+for (i in 1:4803){
+ oh7[i]<- ifelse(movies$years[i] >= 2007, 1, 0)
+}
+
+
+#check first 2 genres to see if they are action, adventure or drama based on most popular genres (website)
+action <- c()
+adv <- c()
+drama <- c()
+for (i in 1:4803){
+ action[i] <- ifelse(movies$genres1[i] == "Action" | movies$genres2[i] == "Action", 1, 0)
+ action[i] <- ifelse(is.nan(action[i]) | is.na(action[i]), 0, action[i])
+ adv[i] <- ifelse(movies$genres1[i] == "Adventure" | movies$genres2[i] == "Adventure", 1, 0)
+ adv[i] <- ifelse(is.nan(adv[i]) | is.na(adv[i]), 0, adv[i])
+ drama[i] <- ifelse(movies$genres1[i] == "Drama" | movies$genres2[i] == "Drama", 1, 0)
+ drama[i] <- ifelse(is.nan(drama[i]) | is.na(drama[i]), 0, drama[i])
+}
+movies <- movies %>%
+  mutate(oh7 = oh7, action = action, adv = adv, drama = drama, lang = lang)
+
+
+
+#Remove 0 values
+movies.new <- movies %>%
+  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang) %>%
+  filter(budget > 0, revenue > 0, vote_count > 0)
+
+
+og.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
+full.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + vote_count + oh7  + action + adv+ drama + lang , data=movies.new)
+int.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + vote_count + oh7 + adv + action + drama + lang + log(revenue)*log(budget), data=movies.new)
+
+anova(og.lm, full.lm)
+anova(full.lm, int.lm)
+anova(int.lm)
+anova(full.lm)
+
+pop.budget <- lm(log(popularity) ~ log(vote_count), data = movies.new)
+ggplot(pop.budget, aes(x=fitted(pop.budget), y=resid(pop.budget))) + geom_point()
+
+```
+
+
+for lasso:
+fit.las <-lm.ridge(log(movies.new$popularity) ~ log(movies.new$revenue) + movies.new$vote_average + log(movies.new$budget) + movies.new$vote_count + movies.new$oh7 + movies.new$adv + movies.new$action + movies.new$drama + movies.new$lang + log(movies.new$revenue)*log(movies.new$budget), alpha=0, lambda = seq(0, .1, .001))
+
+for ridge:
+fit <-lm.ridge(log(movies.new$popularity) ~ log(movies.new$revenue) + movies.new$vote_average + log(movies.new$budget) + movies.new$vote_count + movies.new$oh7 + movies.new$adv + movies.new$action + movies.new$drama + movies.new$lang + log(movies.new$revenue)*log(movies.new$budget), alpha=1, lambda = seq(0, .1, .001))
+
+
