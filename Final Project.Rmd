@@ -24,19 +24,11 @@ library(FactoMineR)
 library(plot3D)
 options(digits=3)
 ```
-```{r}
+
+```{r, include=FALSE}
 movies <- read_csv("~/LM HW/SLM_Project/tmdb_2.csv")
 
-#lang.table <- purrr::map(movies$spoken_languages, jsonlite::fromJSON)
-#lang.table <- purrr::map_df(lang.table, ~data.frame(x=.x), .id="movieID")
-#lang.table <- lang.table %>%
-#  group_by(movieID) %>%
-#  top_n(1, x.name)
-#lang.table <- lang.table[3] %>% pull()
-#movies <- movies %>%
-#  mutate(lang=lang.table)
-
-#original language english
+#code english into 1 and else 0
 lang <- c()
 for (i in 1:4803){
  lang[i]<- ifelse(movies$original_language[i] == "en", 1, 0)
@@ -68,18 +60,22 @@ for (i in 1:4803){
 movies <- movies %>%
   mutate(oh7 = oh7, action = action, adv = adv, drama = drama, lang = lang)
 
-
-
 #Remove 0 values
 movies.new <- movies %>%
   select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang) %>%
   filter(budget > 0, revenue > 0, vote_count > 0)
 
+#logged variables
 movies.log <- movies.new %>%
   mutate(pop.log = log(popularity), rev.log = log(revenue), bud.log = log(budget), count.log = log(vote_count), rev.bud.int = log(budget)*log(revenue))%>%
   select(pop.log, rev.log, vote_average, bud.log, count.log, oh7, adv, action, drama, lang, rev.bud.int)
 
-#LM
+#rename variables for function
+test.new<- test %>%
+  mutate(popularity = pop.log, revenue = rev.log, budget = bud.log, vote_count = count.log)%>%
+  select(popularity, revenue, vote_average, budget, vote_count, oh7, adv, action, drama, lang)
+
+#MLR
 og.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
 full.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + vote_count + oh7  + action + adv+ drama + lang , data=movies.new)
 int.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + log(vote_count) + oh7 + adv + action + drama + lang + log(revenue)*log(budget), data=movies.new)
@@ -93,11 +89,9 @@ tidy(int.lm)
 pop.budget <- lm(log(popularity) ~ log(vote_count), data = movies.new)
 ggplot(pop.budget, aes(x=fitted(pop.budget), y=resid(pop.budget))) + geom_point()
 
+#LASSO 
 set.seed(10)
 lambda.grid =10^seq(5,-2, length =100)
-movies.lasso.cv <- cv.glmnet(log(movies.new$revenue) + movies.new$vote_average + log(movies.new$budget) + movies.new$vote_count + movies.new$oh7 + movies.new$adv + movies.new$action + movies.new$drama + movies.new$lang + log(movies.new$revenue)*log(movies.new$budget), log(movies.new$population),alpha=1, lambda = lambda.grid, standardize=TRUE)
-
-#LASSO 
 sample <- sample.int(n = nrow(movies.log), size = floor(.90*nrow(movies.log)), replace = F)
 train <- movies.log[sample, ]
 test  <- movies.log[-sample, ]
@@ -106,6 +100,8 @@ movies.lasso.cv <- cv.glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lam
 plot(movies.lasso.cv)+
   abline(v=log(movies.lasso.cv$lambda.min), col="green")
 movies.lasso.cv$lambda.min
+
+#LASSO model with min lambda
 movies.lasso <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = movies.lasso.cv$lambda.min, standardize=TRUE)
 tidy(movies.lasso)
 
@@ -122,6 +118,8 @@ movies.ridge.cv <- cv.glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lam
 plot(movies.ridge.cv)+
   abline(v=log(movies.ridge.cv$lambda.min), col="green")
 movies.ridge.cv$lambda.min
+
+#RR with min lambda
 movies.ridge <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = movies.ridge.cv$lambda.min, standardize=TRUE)
 tidy(movies.ridge)
 
@@ -139,18 +137,20 @@ lasso.pred <- predict(movies.lasso.cv, newx = as.matrix(test[,2:11]),
 s = "lambda.min")
 mlr.pred <- predict(int.lm, newdata = data.frame(test.new[,2:10]), type = "response")
 
-test.new<- test %>%
-  mutate(popularity = pop.log, revenue = rev.log, budget = bud.log, vote_count = count.log)%>%
-  select(popularity, revenue, vote_average, budget, vote_count, oh7, adv, action, drama, lang)
-
 #regression splines
-require(splines2)
+require(splines)
 count.knot6 <- bs(movies.log$count.log, df=6, degree=1)
-count.rs <- lm(pop.log ~ count.knot, data=movies.log)
+count.rs <- lm(pop.log ~ count.knot6, data=movies.log)
 summary(count.rs)
 
 #plot regression splines
-qplot(count.log, pop.log, data=movies.log, geom=c("point", "smooth"), method = "lm", formula=y ~ ns(x, 6))
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point() +
+  geom_smooth()
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE)
+#qplot(count.log, pop.log, data=movies.log, geom=c("point", "smooth"), method = "lm", formula=y ~ ns(x, 6))
 movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (method = "rlm")
 
 #LOESS
@@ -211,11 +211,11 @@ plotPCA(pca$x[,1:3], 4)
 
 #logistic regression
 library(caTools)
-model <- glm (action ~ rev.log, data = movies.log, family = binomial)
+model <- glm (action ~ rev.log, data = movies.log, family = "binomial")
 summary(model)
 
 ggplot(movies.log, aes(x=rev.log, y=action)) + geom_point() + 
-stat_smooth(method="glm", family="binomial", se=FALSE)
+  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)
 
 fit = glm(action ~ rev.log, data=movies.log, family=binomial)
 newdat <- data.frame(rev.log=seq(min(movies.log$rev.log), max(movies.log$rev.log)),len=100)
@@ -241,16 +241,18 @@ tidy(movies.lasso)
 
 ggplot(data = test, aes(x=pop.log, y=ridge.pred)) + 
   geom_point( colour = "yellow")  +
-  geom_point(data = test, aes(x=pop.log, y=lasso.pred, colour="blue")) +
-  geom_point(data = test, aes(x=pop.log, y=mlr.pred, colour="green"))+
+  geom_point(data = test, aes(x=pop.log, y=lasso.pred), colour="blue") +
+  geom_point(data = test, aes(x=pop.log, y=mlr.pred), colour="green")+
   xlab ( "Observed Popularity")+
   ylab("Predicted Popularity") + 
   scale_shape_discrete(name  ="Model Type",
                           breaks=c("yellow", "blue", "green"),
                           labels=c("Ridge Regression", "Lasso", "MLR"))
   
+  
 
 ```
+
 ```{r}
 plot(test$pop.log, mlr.pred)
 ```

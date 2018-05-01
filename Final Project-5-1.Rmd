@@ -117,6 +117,7 @@ plot(movies.lasso, xvar="lambda", xlim=c(-6,10),col=colors)+
   abline(v=log(movies.lasso.cv$lambda.min))+
   abline(h=0, lty=2)+
   text(rep(-6.5, 10), coef(movies.lasso)[-1,length(lambda.grid)], colnames(train)[-1], pos=4, col=colors)
+tidy(movies.lasso)
 
 #ridge regression
 movies.ridge.cv <- cv.glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = lambda.grid, standardize=TRUE)
@@ -242,8 +243,8 @@ tidy(movies.lasso)
 
 ggplot(data = test, aes(x=pop.log, y=ridge.pred)) + 
   geom_point( colour = "yellow")  +
-  geom_point(data = test, aes(x=pop.log, y=lasso.pred, colour="blue")) +
-  geom_point(data = test, aes(x=pop.log, y=mlr.pred, colour="green"))+
+  geom_point(data = test, aes(x=pop.log, y=lasso.pred), colour="blue") +
+  geom_point(data = test, aes(x=pop.log, y=mlr.pred), colour="green")+
   xlab ( "Observed Popularity")+
   ylab("Predicted Popularity") + 
   scale_shape_discrete(name  ="Model Type",
