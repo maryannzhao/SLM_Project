@@ -1,0 +1,377 @@
+---
+title: "Final Project"
+output: pdf_document
+authors: Leyla Akay and Maryann Zhao
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, fig.align = "center")
+library(dplyr)
+library(ggplot2)
+library(infer)
+library(skimr)
+library(broom)
+library(mosaic)
+library(knitr)
+library(readr)
+library(graphics)
+library(GGally)
+require(lattice)
+library(readr)
+library(purrr)
+require(glmnet)
+library(FactoMineR)
+library(plot3D)
+options(digits=3)
+```
+
+```{r, include=FALSE}
+movies <- read_csv("~/LM HW/SLM_Project/tmdb_2.csv")
+
+#code english into 1 and else 0
+lang <- c()
+for (i in 1:4803){
+ lang[i]<- ifelse(movies$original_language[i] == "en", 1, 0)
+}
+  
+#dates after the year 2007
+dates <- as.Date(movies$release_date, "%m/%d/%y")
+dates <- as.numeric(substring(dates, 1, 4))
+movies <- movies %>%
+  mutate(years = dates) 
+oh7 <- c()
+for (i in 1:4803){
+ oh7[i]<- ifelse(movies$years[i] >= 2007, 1, 0)
+}
+
+
+#check first 2 genres to see if they are action, adventure or drama based on most popular genres (website)
+action <- c()
+adv <- c()
+drama <- c()
+for (i in 1:4803){
+ action[i] <- ifelse(movies$genres1[i] == "Action" | movies$genres2[i] == "Action", 1, 0)
+ action[i] <- ifelse(is.nan(action[i]) | is.na(action[i]), 0, action[i])
+ adv[i] <- ifelse(movies$genres1[i] == "Adventure" | movies$genres2[i] == "Adventure", 1, 0)
+ adv[i] <- ifelse(is.nan(adv[i]) | is.na(adv[i]), 0, adv[i])
+ drama[i] <- ifelse(movies$genres1[i] == "Drama" | movies$genres2[i] == "Drama", 1, 0)
+ drama[i] <- ifelse(is.nan(drama[i]) | is.na(drama[i]), 0, drama[i])
+}
+movies <- movies %>%
+  mutate(oh7 = oh7, action = action, adv = adv, drama = drama, lang = lang)
+
+#Remove 0 values
+movies.new <- movies %>%
+  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang) %>%
+  filter(budget > 0, revenue > 0, vote_count > 0)
+
+#logged variables
+movies.log <- movies.new %>%
+  mutate(pop.log = log(popularity), rev.log = log(revenue), bud.log = log(budget), count.log = log(vote_count), rev.bud.int = log(budget)*log(revenue))%>%
+  select(pop.log, rev.log, vote_average, bud.log, count.log, oh7, adv, action, drama, lang, rev.bud.int)
+
+#rename variables for function
+test.new<- test %>%
+  mutate(popularity = pop.log, revenue = rev.log, budget = bud.log, vote_count = count.log)%>%
+  select(popularity, revenue, vote_average, budget, vote_count, oh7, adv, action, drama, lang)
+
+#MLR
+og.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
+full.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + vote_count + oh7  + action + adv+ drama + lang , data=movies.new)
+int.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + log(vote_count) + oh7 + adv + action + drama + lang + log(revenue)*log(budget), data=movies.new)
+
+anova(og.lm, full.lm)
+anova(full.lm, int.lm)
+anova(int.lm)
+anova(full.lm)
+tidy(int.lm)
+
+pop.budget <- lm(log(popularity) ~ log(vote_count), data = movies.new)
+ggplot(pop.budget, aes(x=fitted(pop.budget), y=resid(pop.budget))) + geom_point()
+
+#LASSO 
+set.seed(10)
+lambda.grid =10^seq(5,-2, length =100)
+sample <- sample.int(n = nrow(movies.log), size = floor(.90*nrow(movies.log)), replace = F)
+train <- movies.log[sample, ]
+test  <- movies.log[-sample, ]
+
+movies.lasso.cv <- cv.glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = lambda.grid, standardize=TRUE)
+plot(movies.lasso.cv)+
+  abline(v=log(movies.lasso.cv$lambda.min), col="green")
+movies.lasso.cv$lambda.min
+
+#LASSO model with min lambda
+movies.lasso <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = movies.lasso.cv$lambda.min, standardize=TRUE)
+tidy(movies.lasso)
+
+#plot lasso coefficients
+colors <- rainbow(10)
+movies.lasso <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = lambda.grid, standardize=TRUE)
+plot(movies.lasso, xvar="lambda", xlim=c(-6,10),col=colors)+
+  abline(v=log(movies.lasso.cv$lambda.min))+
+  abline(h=0, lty=2)+
+  text(rep(-6.5, 10), coef(movies.lasso)[-1,length(lambda.grid)], colnames(train)[-1], pos=4, col=colors)
+
+#ridge regression
+movies.ridge.cv <- cv.glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = lambda.grid, standardize=TRUE)
+plot(movies.ridge.cv)+
+  abline(v=log(movies.ridge.cv$lambda.min), col="green")
+movies.ridge.cv$lambda.min
+
+#RR with min lambda
+movies.ridge <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = movies.ridge.cv$lambda.min, standardize=TRUE)
+tidy(movies.ridge)
+
+
+#plot RR coefficients
+movies.ridge <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = lambda.grid, standardize=TRUE)
+plot(movies.ridge, xvar="lambda", xlim=c(-6,10),col=colors)+
+  abline(v=log(movies.ridge.cv$lambda.min))+
+  abline(h=0, lty=2)+
+  text(rep(-6.5, 9), coef(movies.ridge)[-1,length(lambda.grid)], colnames(train)[-1], pos=4, col=colors)
+
+ridge.pred <- predict(movies.ridge.cv, newx = as.matrix(test[,2:11]),
+s = "lambda.min")
+lasso.pred <- predict(movies.lasso.cv, newx = as.matrix(test[,2:11]),
+s = "lambda.min")
+mlr.pred <- predict(int.lm, newdata = data.frame(test.new[,2:10]), type = "response")
+
+#regression splines
+require(splines)
+count.knot6 <- bs(movies.log$count.log, df=6, degree=1)
+count.rs <- lm(pop.log ~ count.knot6, data=movies.log)
+
+
+#plot regression splines
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, aes(colour = "orange")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, aes(colour = "green")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, aes(colour = "blue")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, aes(colour = "red")) +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +
+  scale_colour_manual(name="df", values = c("orange", "green", "blue", "red"), labels=c("3", "5", "7","9")) +
+  ggtitle("Regression Splines with Varying df")
+  
+
+#qplot(count.log, pop.log, data=movies.log, geom=c("point", "smooth"), method = "lm", formula=y ~ ns(x, 6))
+movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (method = "rlm")
+
+#LOESS
+count.lor <- loess(pop.log ~ count.log, span=.2, data=movies.log)
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, aes(colour = "orange")) +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, aes(colour = "green")) +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.7, se = FALSE, aes(colour = "blue")) +
+  geom_smooth(method = "loess", formula = y ~ x, span =0.1, se = FALSE, aes(colour = "red")) +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +
+  scale_colour_manual(name="span", values = c("orange", "green", "blue", "red"), labels=c("0.3", "0.5", "0.7","0.1")) +
+  ggtitle("Regression Splines with Varying df")
+
+
+#PCA
+movies.cont<- movies.log %>%
+  select(rev.log, vote_average, bud.log, count.log)
+
+pca <- prcomp(movies.cont, scale. = T, center = TRUE)
+
+library(devtools)
+#install_github("ggbiplot", "vqv")
+ 
+library(ggbiplot)
+g <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = movies.cont$rev.log, ellipse = TRUE, 
+              circle = TRUE)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal', 
+               legend.position = 'top')
+print(g)
+
+pca <- PCA(movies.cont, graph = TRUE)
+pca$eig
+
+scatter3D(pca$eig[1], pca$eig[2], pca$eig[3], colvar = NULL, col = "blue",
+          pch = 19, cex = 0.5)
+
+pca <- prcomp(t(movies.cont), scale=TRUE)
+fit <- hclust(dist(pca$x[,1:4]), method="complete") # 1:3 -> based on 3 components
+groups <- cutree(fit, k=4)  
+library(rgl)
+plotPCA <- function(x, nGroup) {
+    n <- ncol(x) 
+    if(!(n %in% c(2,3))) { # check if 2d or 3d
+        stop("x must have either 2 or 3 columns")
+    }
+
+    fit <- hclust(dist(x), method="complete") # cluster
+    groups <- cutree(fit, k=nGroup)
+
+    if(n == 3) { # 3d plot
+        plot3D(x, col=groups, type="s", size=1, axes=F)
+        axes3d(edges=c("x--", "y--", "z"), lwd=3, axes.len=2, labels=FALSE)
+        grid3d("x")
+        grid3d("y")
+        grid3d("z")
+    } else { # 2d plot
+        maxes <- apply(abs(x), 2, max)
+        rangeX <- c(-maxes[1], maxes[1])
+        rangeY <- c(-maxes[2], maxes[2])
+        plot(x, col=groups, pch=19, xlab=colnames(x)[1], ylab=colnames(x)[2], xlim=rangeX, ylim=rangeY)
+        lines(c(0,0), rangeX*2)
+        lines(rangeY*2, c(0,0))
+    }
+}
+plotPCA(pca$x[,1:3], 4)
+
+#logistic regression
+library(caTools)
+model <- glm (action ~ rev.log, data = movies.log, family = "binomial")
+summary(model)
+
+ggplot(movies.log, aes(x=rev.log, y=action)) + geom_point() + 
+  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)
+
+fit = glm(action ~ rev.log, data=movies.log, family=binomial)
+newdat <- data.frame(rev.log=seq(min(movies.log$rev.log), max(movies.log$rev.log)),len=100)
+newdat$action = predict(fit, newdata=newdat, type="response")
+plot(action ~ rev.log, data=movies.log, col="red4")
+lines(action ~ rev.log, newdat, col="green4", lwd=2)
+
+```
+
+```{r}
+#og model 
+int.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + vote_count + oh7 + adv + action + drama + lang + log(revenue)*log(budget), data=movies.new)
+tidy(int.lm)
+
+#RR
+movies.ridge <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = movies.ridge.cv$lambda.min, standardize=TRUE)
+tidy(movies.ridge)
+
+#Lasso
+movies.lasso <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = movies.lasso.cv$lambda.min, standardize=TRUE)
+tidy(movies.lasso)
+
+
+ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) + 
+  geom_point()  +
+  geom_point(data = test, aes(x=pop.log, y=lasso.pred, colour="orange")) +
+  geom_point(data = test, aes(x=pop.log, y=mlr.pred, colour="green"))+
+  xlab ( "Observed Popularity")+
+  ylab("Predicted Popularity") + 
+  scale_colour_manual(name  ="Model Type", values=c("yellow", "orange", "green"),
+                          labels=c("Ridge Regression", "Lasso", "MLR"))
+  
+  
+
+```
+
+```{r}
+plot(test$pop.log, mlr.pred)
+```
+<<<<<<< HEAD
+
+Introduction: 
+In this project, we are interested in determining whether we can predict how "popular" a film will be, given relevant information. Although popularity is inherently difficult to quantify, we relied upon Popularity Scores from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), an index based on online votes, clicks, and 'likes'. To predict such popularity scores, we utilized the variables of budget, revenue, and average critic's vote. All information used in this study was sourced from The Movie Database. The movies included in this database 
+=======
+##Introduction: 
+  In this project, we were interested in determining whether we can predict how "popular" a film is, given relevant information about it. Although "popularity" is inherently difficult to quantify, we relied upon quantitative popularity scores taken from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), a measure based on online votes, clicks, and social media 'likes'. To predict these popularity scores, we utilized the variables of budget, revenue,  average critic's vote, the amount of times the movie was voted upon, primary spoken language, genre, and whether the movie was made before or after 2007. We chose to investigate the year 2007 as that was when the iPhone was introduced, and subsequent cultural shifts in media consumption have been linked to it (Ref). All information used in this study was sourced from The Movie Database. The movies included in this database spanned genres including Comedy, Drama, and Horror, and used a variety of languages, from English to Russian. In total, we used data from over four thousand films (n = 4803) to create our model.
+  Before we began analyzing our data, we modified 5 variables to be binary and filtered for values that were not meaningful. First, we asked whether the primary language spoken in the film was English, coding English to 1. Similarly, we converted movies released 2007 or later and the genres action, adventure and drama to binary variables. In terms of data cleaning, we chose to filter certain explanatory variables (budget, revenue, number of votes) to remove zero values when such a value would not be meaningful. For instance, a movie that has a budget of zero in reality has little meaning in the sense that films require at least a small sum of money in order to be able to obtain the necessary actors, production material, props, etc. 
+  Previously, we performed nested F tests to narrow down the significant variables included in our multiple linear regression model described above. This model will start as our baseline model that we will use for comparisons in our current study 
+
+```{r}
+#Converting if the primary language was English into binary (En = 1)
+lang <- c()
+for (i in 1:4803){
+ lang[i]<- ifelse(movies$original_language[i] == "en", 1, 0)
+}
+
+#Converting if release date was after 2007 into binary (2007 or later = 1)
+dates <- as.Date(movies$release_date, "%m/%d/%y")
+dates <- as.numeric(substring(dates, 1, 4))
+movies <- movies %>%
+  mutate(years = dates) 
+oh7 <- c()
+for (i in 1:4803){
+ oh7[i]<- ifelse(movies$years[i] >= 2007, 1, 0)
+}
+
+#Convert if first 2 genres are action, adventure or drama based on most popular genres (website) (genre = 1)
+action <- c()
+adv <- c()
+drama <- c()
+for (i in 1:4803){
+ action[i] <- ifelse(movies$genres1[i] == "Action" | movies$genres2[i] == "Action", 1, 0)
+ action[i] <- ifelse(is.nan(action[i]) | is.na(action[i]), 0, action[i])
+ adv[i] <- ifelse(movies$genres1[i] == "Adventure" | movies$genres2[i] == "Adventure", 1, 0)
+ adv[i] <- ifelse(is.nan(adv[i]) | is.na(adv[i]), 0, adv[i])
+ drama[i] <- ifelse(movies$genres1[i] == "Drama" | movies$genres2[i] == "Drama", 1, 0)
+ drama[i] <- ifelse(is.nan(drama[i]) | is.na(drama[i]), 0, drama[i])
+}
+
+#Remove values where budget, revenue, or vote count is 0 because not meaningful
+movies.zero <- movies %>%
+  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang) %>%
+  filter(budget > 0, revenue > 0, vote_count > 0)
+
+#Full MLR with log transformations
+full.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + log(vote_count) + oh7 + adv + action + drama + lang + log(revenue)*log(budget), data=movies.new)
+```
+
+##Shrinking The Variables
+Our first goal was to reduce the variability associated with our coefficients. We did this by using two different methods: "Ridge Regression", which minimizes the coefficients , and "Lasso", which shrinks the coefficients to zero. Unlike Ordinary Least Squares, both Ridge Regression and Lasso add a little bit of bias into the model, such that coefficients that explain the data well are weighted more, and unimportant coefficients are shrunk. This helps avoid overfitting the model to the random quirks of the data. To determine the best tuning parameter to use for these methods, we performed 10-fold (?) crossvalidation. The values of the tuning parameter that minimized the mean square error for Lasso and RR were 0.01 and 0.0118, respectively. We see that as we increase the tuning parameter, lambda, the variable of how many votes a movie received is the slowest to be shrunk to zero. This indicates that this variable may be important for our model's predictions. 
+
+```{r, echo=FALSE}
+ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) + 
+  geom_point()  +
+  geom_point(data = test, aes(x=pop.log, y=lasso.pred, colour="orange")) +
+  geom_point(data = test, aes(x=pop.log, y=mlr.pred, colour="green"))+
+  xlab ( "Observed Popularity")+
+  ylab("Predicted Popularity") + 
+  scale_colour_manual(name  ="Model Type", values=c("yellow", "orange", "green"),
+                          labels=c("Ridge Regression", "Lasso", "MLR"))
+```
+
+From the plots, it is clear that using Ridge Regression or Lasso on our data effectively reduced the variation. The data points are transformed from being cloud-like to a more linear spread. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both shrunk the variables '' and '' ; this indicate that these variables may be less important for our model's predictions. 
+
+##Smoothing 
+We were next interested in smoothing the variable of vote counts, as it appeared to be one of the most important variables in the model. We used both kernel and spline smoothing methods, each time changing the degrees of freedom. With larger degrees of freedom, the model became more flexible--but approached the dangerous territory of overfitting. 
+
+```{r, echo=FALSE}
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point(colour = "darkgrey") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, aes(colour = "orange")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, aes(colour = "green")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, aes(colour = "yellow")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, aes(colour = "red")) +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +scale_colour_manual(name="df", values = c("orange", "green", "yellow", "red"), labels=c("3", "5", "7","9")) +
+  ggtitle("Regression Splines with Varying df")
+
+
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point(colour = "darkgrey") +
+  geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, aes(colour = "orange")) +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, aes(colour = "green")) +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.7, se = FALSE, aes(colour = "yellow")) +
+  geom_smooth(method = "loess", formula = y ~ x, span =0.1, se = FALSE, aes(colour = "red")) +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +
+  scale_colour_manual(name="span", values = c("orange", "green", "yellow", "red"), labels=c("0.3", "0.5", "0.7","0.1")) +
+  ggtitle("Regression Splines with Varying df")
+```
+
+We conclude that the best model is one that accurately describes the model, without overfitting the data. Such a model is .
+
+##Principal Component Analysis
+We have many parameters to describe our data, some of which may be correlated. For example, budget is likely correlated to genre; action movies requiring computer-generated graphics probably cost more to produce than comedies. Therefore, we were interested in using Principal Component Analysis to reduce the dimensionality of our data. If many parameters are correlated, then theoretically we could only use one to explain the variation in the data. We produced a correlation matrix of the continuous variables, and used the eigenvectors as the principal components of our data's variation. We used the first two principal components, which together accounted for X% of the variation within our data, as axes on which to transform each data point. 
+
+(plot of PCA)
+
+We were curious if plotting the data according to these principal components would reveal differences in variation between genres. We therefore color-coded individual movies according to genre. There appears to be no difference in variation relevant to genre; the colors appear to be evenly dispersed amongst eachother. We conclude that the two principal components which explain most of the variation within movies' popularity do not account for the differences in variation between genre.
+
+##Logistic regression
+Finally, we were curious if we could predict whether a movie belonged to the genre of 'Action' or not. To perform this binary classification, we used a logistic regression. We included all the variables of the previous model, and performed a nested Chi-square test evaluating the sequential significance of each parameter. All the parameters were determined to be significant (p < ), so we kept them. Our logistic regression 
