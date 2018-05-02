@@ -292,9 +292,9 @@ ggplot(data = test, aes(x=pop.log, y=ridge.pred)) +
   scale_colour_manual(name  ="Model Type", values=c("yellow", "orange", "green"),
                           labels=c("Ridge Regression", "Lasso", "MLR"))
 ```
-Figure 1. Comparison of MLR, Ridge Regression and Lasso models.  Ridge Regression (yellow) and Lasso (orange) display a comparable comparable relationship between observed popularirty and predicted popularity where both predict similar values as the observed. MLR (green) on the otherhand appears to underpredict the popularity 
+Figure 1. Comparison of MLR, Ridge Regression and Lasso models.  Ridge Regression (yellow) and Lasso (orange) display a comparable comparable relationship between observed popularirty and predicted popularity where both predict similar values as the observed. MLR (green) on the otherhand appears to underpredict the popularity compared to the observed popularity.
 
-From the plots, it is clear that using Ridge Regression or Lasso on our data effectively reduced the variation. The data points are transformed from being cloud-like to a more linear spread. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both decreased the coefficients of language, Action, Adventure and Drama, relative to the previous Multiple Linear Regression model, indicating  that these variables may be less important for our predictions.
+From the plots, it is clear that using Ridge Regression or Lasso predicts our data in a more representative manner. The data points represent how well the predicted popularity correlates with the observed popularity in a test set. If the predicted is accurate in predicted the observed, we would expect a slope of around 1 and that is what we observe. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both decreased the coefficients of language, Action, Adventure and Drama, relative to the previous Multiple Linear Regression model, indicating  that these variables may be less important for our predictions.
 
 ## Smoothing 
 We were next interested in smoothing the variable of vote counts, as it appeared to be one of the most important variables in the model. We used both kernel and spline smoothing methods, each time changing the degrees of freedom. With larger degrees of freedom, the model became more flexible--but approached the dangerous territory of overfitting. 
@@ -309,8 +309,10 @@ ggplot(movies.log, aes(count.log, pop.log)) +
   xlab("log(vote count)") +
   ylab("log(popularity)") +
   ggtitle("Regression Splines with Varying df")
+```
+Figure 2. Regression spline model based on vote count. The explanatory variable vote count was used to create a regression spline model using four different degrees of freedom: 3 (orange), 5 (green), 7 (yellow), 9 (red). 
 
-
+```{r, echo=FALSE}
 ggplot(movies.log, aes(count.log, pop.log)) +
   geom_point(colour = "darkgrey") +
   geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, colour = "orange") +
@@ -321,11 +323,12 @@ ggplot(movies.log, aes(count.log, pop.log)) +
   ylab("log(popularity)") +
   ggtitle("Regression Splines with Varying df")
 ```
+Figure 3. LOESS model based on vote count. Based on the explanatory variable vote count, LOESS models were built using four different span values: 0.1 (red), 0.3 (orange), 0.5 (green), 0.7 (yellow). 
 
-We conclude that the best model is one that accurately describes the trends in the data, without overfitting it. Such a model of regression splines has three degrees of freedom (the orange line). This line captures the overall trend without being swayed by the increased variability on both ends. 
+We conclude that the best model is one that accurately describes the trends in the data, without overfitting it. Such a model of regression splines has three degrees of freedom (the orange line). This line captures the overall trend without being swayed by the increased variability on both ends. We see in other models such as the spline with df of 9 and LOESS with span of 0.1, the model becomes unnecessary curved to describe the data that looks linear. 
 
 ## Principal Component Analysis
-We used many parameters to describe our data, some of which could conceivably be correlated. For example, budget is likely related to genre; movies requiring computer-generated graphics probably cost more to produce than those without, like comedies. Therefore, we were interested in using Principal Component Analysis to reduce the dimensionality of our data. If many parameters are correlated, then theoretically we could only use one to explain the variation in the data. We first produced a correlation matrix of the continuous variables, and used the eigenvectors as the principal components of our data's variation. We used the first two principal components, which together accounted for 84% of the variation within our data, as axes on which to transform each data point. 
+We used many parameters to describe our data, some of which could conceivably be correlated. For example, budget is likely related to genre; movies requiring computer-generated graphics probably cost more to produce than those without, like comedies. Therefore, we were interested in using Principal Component Analysis to reduce the dimensionality of our data. If many parameters are correlated, then theoretically we could only use one to explain the variation in the data. We first produced a correlation matrix of the continuous variables (revenue, budget, vote count, vote average), and used the eigenvectors as the principal components of our data's variation. We used the first two principal components, which together accounted for 84% of the variation within our data, as axes on which to transform each data point. 
 
 ```{r, echo = FALSE}
 ggplot(pca.data,aes(x=PC1,y=PC2, col=genre))+
@@ -334,6 +337,7 @@ ggplot(pca.data,aes(x=PC1,y=PC2, col=genre))+
    theme_classic()+
    ggtitle("PCA plot of Movies")
 ```
+Figure 4. PCA analysis of continuous variables. The PCA analysis is visualized using the two principle components PC1 and PC2. The data is categorzied based on whether the genre is action (red), adventure (green), drama(blue), or other (purple).
 
 We were curious if plotting the data according to these principal components would reveal differences in variation between genres. We therefore color-coded individual movies according to whether they were an Action, Adventure, Drama, or "other" kind of film. There appeared to be no difference in variation relevant to genre; the colors are evenly dispersed amongst the axes. We conclude that the two principal components do not account for the variation between genre.
 
@@ -342,13 +346,19 @@ Finally, we were interested in exploring the concept of Action movies. There has
 
 To test the idea that we can predict whether a film is labeled as an Action movie or not from its popularity, budget, vote scores and average, spoken language, and whether it was produced before or after 2007 (the same variables previously used), we made use of a logistic regression model. Logistic regression models are similar to linear regression models in that they utilize different explanatory parameters to predict a response, but differ in that the response is binomial. In this case, the response was whether a movie belonged to the genre of 'Action' or not. We included all the variables of the previous model, and performed a nested Chi-square test evaluating the sequential significance of each parameter. With a chi-square value of 296, 7 degrees of freedom, and an associated p-value less than 5e-60, the parameters fit the data significantly better than the null model, so we kept all of them. 
 
-```{r, echo=FALSE}
+```{r}
 lr2 <- glm (action ~ pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, data = movies.log, family = "binomial")
-
-ggplot(movies.log, aes(x=pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, y=action)) + geom_point() + 
-  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)+
-  xlim(0,120)
 ```
+
+```{r, echo=FALSE}
+ggplot(movies.log, aes(x=pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, y=action)) + geom_point() + 
+  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE) +
+  xlab("Populairty, Revenue, Vote Average, Budget, Vote Count, 2007, Language")+
+  ylab("Action")+
+  ggtitle("Logistic Regression for Action")
+```
+Figure 5. Logistic Regression for Action. Using the seven variables that were determined to be significant through nested Chi-square tests, a logstic regression model was fit to model Action. 
+
 
 Our logistic regression then used these parameters to calculate the odds associated with predicting a movie's genre as 'Action' or not. This revealed some interesting findings. A doubling of budget, holding all other variables constant, was associated with a 42% increase in odds that a movie would be classified as Action. This may not be surprising; action movies tend to demand expensive equipment and high-profile actors. Similarly, a doubling in the amount of votes cast on a movie was associated with a 50% increase in odds of classifying the movie as Action. Interestingly, a doubling of the actual vote score was associated with a 57% decrease in the odds of our model classifying the movie as Action. One interpretation of these findings is that people may be more likely to vote on action movies, but do not necessarily award them higher scores than other types of movies.
 
