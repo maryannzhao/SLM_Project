@@ -152,7 +152,10 @@ ggplot(movies.log, aes(count.log, pop.log)) +
   geom_smooth()
 ggplot(movies.log, aes(count.log, pop.log)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE)
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, colour = "orange") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, colour = "green") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, colour = "purple") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 2), se = FALSE)
 #qplot(count.log, pop.log, data=movies.log, geom=c("point", "smooth"), method = "lm", formula=y ~ ns(x, 6))
 movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (method = "rlm")
 
@@ -182,11 +185,14 @@ ggplot(pca.data,aes(x=PC1,y=PC2,col=genre2))+
 
 #logistic regression
 library(caTools)
-model <- glm (action ~ rev.log, data = movies.log, family = "binomial")
-summary(model)
+#lr1 <- glm ( ~ 1, data = movies.log, family = "binomial")
+lr2 <- glm (action ~ pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, data = movies.log, family = "binomial")
+anova(lr1, lr2, test="Chisq")
+anova(lr2, test="Chisq")
 
-ggplot(movies.log, aes(x=rev.log, y=action)) + geom_point() + 
-  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)
+ggplot(movies.log, aes(x=pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, y=action)) + geom_point() + 
+  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)+
+  xlim(0,120)
 
 ```
 
