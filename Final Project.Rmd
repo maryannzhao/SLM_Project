@@ -144,18 +144,18 @@ mlr.pred <- predict(int.lm, newdata = data.frame(test.new[,2:10]), type = "respo
 require(splines)
 count.knot6 <- bs(movies.log$count.log, df=6, degree=1)
 count.rs <- lm(pop.log ~ count.knot6, data=movies.log)
-summary(count.rs)
 
 #plot regression splines
 ggplot(movies.log, aes(count.log, pop.log)) +
   geom_point() +
-  geom_smooth()
-ggplot(movies.log, aes(count.log, pop.log)) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, colour = "orange") +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, colour = "green") +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, colour = "purple") +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 2), se = FALSE)
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, aes(colour = "orange")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, aes(colour = "green")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, aes(colour = "blue")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, aes(colour = "red")) +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +scale_colour_manual(name="df", values = c("orange", "green", "blue", "red"), labels=c("3", "5", "7","9")) +
+  ggtitle("Regression Splines with Varying df")
+  
 #qplot(count.log, pop.log, data=movies.log, geom=c("point", "smooth"), method = "lm", formula=y ~ ns(x, 6))
 movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (method = "rlm")
 
@@ -227,6 +227,7 @@ ggplot(data = test, aes(x=pop.log, y=ridge.pred)) +
 ```{r}
 plot(test$pop.log, mlr.pred)
 ```
+
 Introduction: 
 In this project, we are interested in determining whether we can predict how "popular" a film will be, given relevant information. Although popularity is inherently difficult to quantify, we relied upon Popularity Scores from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), an index based on online votes, clicks, and 'likes'. To predict such popularity scores, we utilized the variables of budget, revenue, and average critic's vote. All information used in this study was sourced from The Movie Database. The movies included in this database 
 
