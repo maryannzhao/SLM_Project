@@ -63,18 +63,14 @@ movies <- movies %>%
 
 #Remove 0 values
 movies.new <- movies %>%
-  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang) %>%
+  select(popularity, budget, revenue, vote_average, vote_count, oh7, adv, action, drama, lang, genres1) %>%
   filter(budget > 0, revenue > 0, vote_count > 0)
 
 #logged variables
 movies.log <- movies.new %>%
   mutate(pop.log = log(popularity), rev.log = log(revenue), bud.log = log(budget), count.log = log(vote_count), rev.bud.int = log(budget)*log(revenue))%>%
-  select(pop.log, rev.log, vote_average, bud.log, count.log, oh7, adv, action, drama, lang, rev.bud.int)
+  select(pop.log, rev.log, vote_average, bud.log, count.log, oh7, adv, action, drama, lang, rev.bud.int, genres1)
 
-#rename variables for function
-test.new<- test %>%
-  mutate(popularity = pop.log, revenue = rev.log, budget = bud.log, vote_count = count.log)%>%
-  select(popularity, revenue, vote_average, budget, vote_count, oh7, adv, action, drama, lang)
 
 #MLR
 og.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget), data=movies.new)
@@ -96,6 +92,11 @@ lambda.grid =10^seq(5,-2, length =100)
 sample <- sample.int(n = nrow(movies.log), size = floor(.90*nrow(movies.log)), replace = F)
 train <- movies.log[sample, ]
 test  <- movies.log[-sample, ]
+
+#rename variables for function
+test.new<- test %>%
+  mutate(popularity = pop.log, revenue = rev.log, budget = bud.log, vote_count = count.log)%>%
+  select(popularity, revenue, vote_average, budget, vote_count, oh7, adv, action, drama, lang)
 
 movies.lasso.cv <- cv.glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = lambda.grid, standardize=TRUE)
 plot(movies.lasso.cv)+
@@ -158,8 +159,10 @@ ggplot(movies.log, aes(count.log, pop.log)) +
   
 
 #qplot(count.log, pop.log, data=movies.log, geom=c("point", "smooth"), method = "lm", formula=y ~ ns(x, 6))
-movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (method = "rlm")
+#movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (method = "rlm")
+```
 
+```{r, include=FALSE}
 #LOESS
 count.lor <- loess(pop.log ~ count.log, span=.2, data=movies.log)
 ggplot(movies.log, aes(count.log, pop.log)) +
@@ -175,21 +178,22 @@ ggplot(movies.log, aes(count.log, pop.log)) +
 
 
 #PCA
-movies.cont<- movies.log %>%
-  select(rev.log, vote_average, bud.log, count.log)
+movies.pca<- movies.log %>%
+  select(rev.log, vote_average, bud.log, count.log, genres1) %>%
+  mutate(genre2 = ifelse(genres1 == "Action" | genres1 == "Adventure" | genres1 == "Drama", genres1, "other"))
 
-pca <- prcomp(movies.cont, scale. = T, center = TRUE)
+pca <- prcomp(movies.pca[1:4], scale. = T, center = TRUE)
+pca.data <- data.frame(pca$x, genre = movies.pca$genre2)
 
-ggplot(pca.data,aes(x=PC1,y=PC2,col=genre2))+
-   geom_point(size=2,alpha=0.5)+ #Size and alpha just for fun
-   scale_color_manual(values = rainbow(4))+ #your colors here
+ggplot(pca.data,aes(x=PC1,y=PC2, col=genre))+
+   geom_point(size=2,alpha=0.5)+ 
+   scale_color_manual(values = rainbow(4))+
    theme_classic()+
    ggtitle("PCA plot of Movies")
 
 #logistic regression
 library(caTools)
 lr2 <- glm (action ~ pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, data = movies.log, family = "binomial")
-anova(lr1, lr2, test="Chisq")
 anova(lr2, test="Chisq")
 
 ggplot(movies.log, aes(x=pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, y=action)) + geom_point() + 
@@ -278,15 +282,17 @@ Our first goal was to reduce the variability associated with our coefficients. W
 
 
 ```{r, echo=FALSE}
-ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) + 
-  geom_point()  +
-  geom_point(data = test, aes(x=pop.log, y=lasso.pred, colour="orange")) +
-  geom_point(data = test, aes(x=pop.log, y=mlr.pred, colour="green"))+
+ggplot(data = test, aes(x=pop.log, y=ridge.pred)) + 
+  geom_point(colour = "yellow")  +
+  geom_point(data = test, aes(x=pop.log, y=lasso.pred), colour="orange") +
+  geom_point(data = test, aes(x=pop.log, y=mlr.pred), colour="green")+
   xlab ( "Observed Popularity")+
-  ylab("Predicted Popularity") + 
+  ylab("Predicted Popularity") +
+  ggtitle("Comparing MLR, Ridge Regression and Lasso") 
   scale_colour_manual(name  ="Model Type", values=c("yellow", "orange", "green"),
                           labels=c("Ridge Regression", "Lasso", "MLR"))
 ```
+Figure 1. Comparison of MLR, Ridge Regression and Lasso models.  Ridge Regression (yellow) and Lasso (orange) display a comparable comparable relationship between observed popularirty and predicted popularity where both predict similar values as the observed. MLR (green) on the otherhand appears to underpredict the popularity 
 
 From the plots, it is clear that using Ridge Regression or Lasso on our data effectively reduced the variation. The data points are transformed from being cloud-like to a more linear spread. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both decreased the coefficients of language, Action, Adventure and Drama, relative to the previous Multiple Linear Regression model, indicating  that these variables may be less important for our predictions.
 
@@ -322,9 +328,9 @@ We conclude that the best model is one that accurately describes the trends in t
 We used many parameters to describe our data, some of which could conceivably be correlated. For example, budget is likely related to genre; movies requiring computer-generated graphics probably cost more to produce than those without, like comedies. Therefore, we were interested in using Principal Component Analysis to reduce the dimensionality of our data. If many parameters are correlated, then theoretically we could only use one to explain the variation in the data. We first produced a correlation matrix of the continuous variables, and used the eigenvectors as the principal components of our data's variation. We used the first two principal components, which together accounted for 84% of the variation within our data, as axes on which to transform each data point. 
 
 ```{r, echo = FALSE}
-ggplot(pca.data,aes(x=PC1,y=PC2,col=genre2))+
-   geom_point(size=2,alpha=0.5)+ #Size and alpha just for fun
-   scale_color_manual(values = rainbow(4))+ #your colors here
+ggplot(pca.data,aes(x=PC1,y=PC2, col=genre))+
+   geom_point(size=2,alpha=0.5)+ 
+   scale_color_manual(values = rainbow(4))+
    theme_classic()+
    ggtitle("PCA plot of Movies")
 ```
