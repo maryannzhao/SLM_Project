@@ -146,13 +146,13 @@ count.rs <- lm(pop.log ~ count.knot6, data=movies.log)
 #plot regression splines
 ggplot(movies.log, aes(count.log, pop.log)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, aes(colour = "orange")) +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, aes(colour = "green")) +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, aes(colour = "blue")) +
-  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, aes(colour = "red")) +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, colour = "orange") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, colour = "green") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, colour = "blue") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, colour = "red") +
   xlab("log(vote count)") +
   ylab("log(popularity)") +
-  scale_colour_manual(name="df", values = c("orange", "green", "blue", "red"), labels=c("3", "5", "7","9")) +
+  scale_colour_manual(name="df", values = c("orange", "green", "blue", "red"), labels=c("9", "7", "5","3")) +
   ggtitle("Regression Splines with Varying df")
   
 
@@ -163,12 +163,12 @@ movies.log %>% ggplot(aes(count.log, pop.log)) + geom_point() + stat_smooth (met
 count.lor <- loess(pop.log ~ count.log, span=.2, data=movies.log)
 ggplot(movies.log, aes(count.log, pop.log)) +
   geom_point() +
-  geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, aes(colour = "orange")) +
-  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, aes(colour = "green")) +
-  geom_smooth(method = "loess", formula = y ~ x, span = 0.7, se = FALSE, aes(colour = "blue")) +
-  geom_smooth(method = "loess", formula = y ~ x, span =0.1, se = FALSE, aes(colour = "red")) +
+  geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, colour = "orange") +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, colour = "green") +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.7, se = FALSE, colour = "blue") +
+  geom_smooth(method = "loess", formula = y ~ x, span =0.1, se = FALSE, colour = "red") +
   xlab("log(vote count)") +
-  ylab("log(popularity)") +
+  ylab("log(popularity)") 
   scale_colour_manual(name="span", values = c("orange", "green", "blue", "red"), labels=c("0.3", "0.5", "0.7","0.1")) +
   ggtitle("Regression Splines with Varying df")
 
@@ -243,9 +243,33 @@ lines(action ~ rev.log, newdat, col="green4", lwd=2)
 ```
 
 ```{r}
+### code to add#plot regression splines
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, colour = "orange") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, colour = "green") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, colour = "blue") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, colour = "red") +
+  xlab("log(vote count)") +
+  ylab("log(popularity)")  +
+  ggtitle("Regression Splines with Varying df")
+  
+
+
+#LOESS
+count.lor <- loess(pop.log ~ count.log, span=.2, data=movies.log)
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, colour = "orange") +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, colour = "green") +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.7, se = FALSE, colour = "blue") +
+  geom_smooth(method = "loess", formula = y ~ x, span =0.1, se = FALSE, colour = "red") +
+  xlab("log(vote count)") +
+  ylab("log(popularity)")  +
+  ggtitle("Regression Splines with Varying df")
 #og model 
 int.lm <- lm(log(popularity) ~ log(revenue) + vote_average + log(budget) + vote_count + oh7 + adv + action + drama + lang + log(revenue)*log(budget), data=movies.new)
-tidy(int.lm)
+tidy(int.lm)$estimates
 
 #RR
 movies.ridge <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=0, lambda = movies.ridge.cv$lambda.min, standardize=TRUE)
@@ -255,7 +279,48 @@ tidy(movies.ridge)
 movies.lasso <- glmnet(as.matrix(train[,2:11]), train$pop.log,alpha=1, lambda = movies.lasso.cv$lambda.min, standardize=TRUE)
 tidy(movies.lasso)
 
+#PCA
+ggplot(pca.data,aes(x=PC1,y=PC2,col=genre2))+
+   geom_point(size=2,alpha=0.5)+ #Size and alpha just for fun
+   scale_color_manual(values = rainbow(4))+ #your colors here
+   theme_classic()+
+   ggtitle("PCA plot of Movies")
 
+#logistic regression
+library(caTools)
+lr2 <- glm (action ~ pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, data = movies.log, family = "binomial")
+anova(lr1, lr2, test="Chisq")
+anova(lr2, test="Chisq")
+
+ggplot(movies.log, aes(x=pop.log+ rev.log + vote_average + bud.log + count.log + oh7 + lang, y=action)) + geom_point() + 
+  stat_smooth(method="glm", method.args = list(family="binomial"), se=FALSE)+
+  xlim(0,120)
+
+#spline and LOESS
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point(colour = "darkgrey") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 3), se = FALSE, colour = "orange") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 5), se = FALSE, colour = "green") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 7), se = FALSE, colour = "yellow") +
+  geom_smooth(method = "lm", formula = y ~ splines::bs(x, 9), se = FALSE, colour = "red") +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +
+  ggtitle("Regression Splines with Varying df")
+
+
+ggplot(movies.log, aes(count.log, pop.log)) +
+  geom_point(colour = "darkgrey") +
+  geom_smooth(method = "loess", formula= y ~ x, span = 0.3,  se = FALSE, colour = "orange") +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, se = FALSE, colour = "green") +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.7, se = FALSE, colour = "yellow") +
+  geom_smooth(method = "loess", formula = y ~ x, span =0.1, se = FALSE, colour = "red") +
+  xlab("log(vote count)") +
+  ylab("log(popularity)") +
+  ggtitle("Regression Splines with Varying df")
+
+```
+
+```{r}
 ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) + 
   geom_point()  +
   geom_point(data = test, aes(x=pop.log, y=lasso.pred, colour="orange")) +
@@ -268,7 +333,9 @@ ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) +
   
 
 ```
+```{r}
 
+```
 ```{r}
 plot(test$pop.log, mlr.pred)
 ```
@@ -376,7 +443,13 @@ We conclude that the best model is one that accurately describes the model, with
 ## Principal Component Analysis
 We have many parameters to describe our data, some of which may be correlated. For example, budget is likely correlated to genre; action movies requiring computer-generated graphics probably cost more to produce than comedies. Therefore, we were interested in using Principal Component Analysis to reduce the dimensionality of our data. If many parameters are correlated, then theoretically we could only use one to explain the variation in the data. We produced a correlation matrix of the continuous variables, and used the eigenvectors as the principal components of our data's variation. We used the first two principal components, which together accounted for X% of the variation within our data, as axes on which to transform each data point. 
 
-(plot of PCA)
+```{r, echo=FALSE}
+ggplot(pca.data,aes(x=PC1,y=PC2,col=genre2))+
+   geom_point(size=2,alpha=0.5)+ #Size and alpha just for fun
+   scale_color_manual(values = rainbow(4))+ #your colors here
+   theme_classic()+
+   ggtitle("PCA plot of Movies")
+```
 
 We were curious if plotting the data according to these principal components would reveal differences in variation between genres. We therefore color-coded individual movies according to genre. There appears to be no difference in variation relevant to genre; the colors appear to be evenly dispersed amongst eachother. We conclude that the two principal components which explain most of the variation within movies' popularity do not account for the differences in variation between genre.
 
