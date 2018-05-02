@@ -273,16 +273,13 @@ ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) +
 plot(test$pop.log, mlr.pred)
 ```
 
-
-
-
+=======
 ## Introduction: 
-In this project, we were interested in determining whether we can predict how "popular" a film is, given relevant information about it. Although "popularity" is inherently difficult to measure, we relied upon quantitative popularity scores taken from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), a measure based on online votes, clicks, and social media 'likes'. To predict these popularity scores, we utilized the variables of budget, revenue,  average critic's vote, the amount of times the movie was voted upon, primary spoken language, genre, and whether the movie was made before or after 2007. We chose to investigate the year 2007 as that was when the iPhone was introduced, and subsequent cultural shifts in media consumption have been linked to it (Ref). All information used in this study was sourced from The Movie Database. The movies included in this database spanned genres including Comedy, Drama, and Horror, and used a variety of languages, from English to Russian. In total, we used data from over four thousand films to create our model.
-
-Before we began analyzing our data, we modified 5 variables to be binary and filtered for values that were not meaningful. First, we asked whether the primary language spoken in the film was English, coding English to 1. Similarly, we converted movies released 2007 or later and the genres action, adventure and drama to binary variables. In terms of data cleaning, we chose to filter certain explanatory variables (budget, revenue, number of votes) to remove zero values when such a value would not be meaningful. For instance, a movie that has a budget of zero in reality has little meaning in the sense that films require at least a small sum of money in order to be able to obtain the necessary actors, production material, props, etc. 
+  In this project, we were interested in determining whether we can predict how "popular" a film is, given relevant information about it. Although "popularity" is inherently difficult to quantify, we relied upon quantitative popularity scores taken from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), a measure based on online votes, clicks, and social media 'likes'. To predict these popularity scores, we utilized the variables of budget, revenue,  average critic's vote, the amount of times the movie was voted upon, primary spoken language, genre, and whether the movie was made before or after 2007. We chose to investigate the year 2007 as that was when the iPhone was introduced, and subsequent cultural shifts in media consumption have been linked to it (Ref). All information used in this study was sourced from The Movie Database. The movies included in this database spanned genres including Comedy, Drama, and Horror, and used a variety of languages, from English to Russian. In total, we used data from over four thousand films (n = 4803) to create our model.
+  Before we began analyzing our data, we modified 5 variables to be binary and filtered for values that were not meaningful. First, we asked whether the primary language spoken in the film was English, coding English to 1. Similarly, we converted movies released 2007 or later and the genres action, adventure and drama to binary variables. In terms of data cleaning, we chose to filter certain explanatory variables (budget, revenue, number of votes) to remove zero values when such a value would not be meaningful. For instance, a movie that has a budget of zero in reality has little meaning in the sense that films require at least a small sum of money in order to be able to obtain the necessary actors, production material, props, etc. 
   Previously, we performed nested F tests to narrow down the significant variables included in our multiple linear regression model described above. This model will start as our baseline model that we will use for comparisons in our current study 
-  
-  ```{r}
+
+```{r}
 #Converting if the primary language was English into binary (En = 1)
 lang <- c()
 for (i in 1:4803){
@@ -337,8 +334,6 @@ ggplot(data = test, aes(x=pop.log, y=ridge.pred, colour = "yellow")) +
 
 From the plots, it is clear that using Ridge Regression or Lasso on our data effectively reduced the variation. The data points are transformed from being cloud-like to a more linear spread. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both shrunk the variables '' and '' ; this indicate that these variables may be less important for our model's predictions. 
 
-
-
 ## Smoothing 
 We were next interested in smoothing the variable of vote counts, as it appeared to be one of the most important variables in the model. We used both kernel and spline smoothing methods, each time changing the degrees of freedom. With larger degrees of freedom, the model became more flexible--but approached the dangerous territory of overfitting. 
 
@@ -366,6 +361,26 @@ ggplot(movies.log, aes(count.log, pop.log)) +
   ggtitle("Regression Splines with Varying df")
 ```
 
+## Introduction: 
+In this project, we were interested in determining whether we can predict how "popular" a film is, given relevant information about it. Although "popularity" is inherently difficult to measure, we relied upon quantitative popularity scores taken from The Movie Database (https://www.kaggle.com/tmdb-movie-metadata/data), a measure based on online votes, clicks, and social media 'likes'. To predict these popularity scores, we utilized the variables of budget, revenue,  average critic's vote, the amount of times the movie was voted upon, primary spoken language, genre, and whether the movie was made before or after 2007. We chose to investigate the year 2007 as that was when the iPhone was introduced, and subsequent cultural shifts in media consumption have been linked to it (Ref). All information used in this study was sourced from The Movie Database. The movies included in this database spanned genres including Comedy, Drama, and Horror, and used a variety of languages, from English to Russian. In total, we used data from over four thousand films to create our model.
+
+Before we began analyzing our data, we modified 5 variables to be binary and filtered for values that were not meaningful. First, we asked whether the primary language spoken in the film was English, coding English to 1. Similarly, we converted movies released 2007 or later and the genres action, adventure and drama to binary variables. In terms of data cleaning, we chose to filter certain explanatory variables (budget, revenue, number of votes) to remove zero values when such a value would not be meaningful. For instance, a movie that has a budget of zero in reality has little meaning in the sense that films require at least a small sum of money in order to be able to obtain the necessary actors, production material, props, etc. 
+  Previously, we performed nested F tests to narrow down the significant variables included in our multiple linear regression model described above. This model will start as our baseline model that we will use for comparisons in our current study 
+
+## Shrinking The Variables
+Our first goal was to reduce the variability associated with our coefficients. We did this by using two different methods: "Ridge Regression", which minimizes the coefficients , and "Lasso", which shrinks the coefficients to zero. Unlike Ordinary Least Squares, both Ridge Regression and Lasso add a little bit of bias into the model, such that coefficients that explain the data well are weighted more, and unimportant coefficients are shrunk. This helps avoid overfitting the model to the random quirks of the data. To determine the best tuning parameter to use for these methods, we performed 10-fold (?) crossvalidation. The values of the tuning parameter that minimized the mean square error for Lasso and RR were 0.01 and 0.0118, respectively. We see that as we increase the tuning parameter, lambda, the variable of how many votes a movie received is the slowest to be shrunk to zero. This indicates that this variable may be important for our model's predictions. 
+
+(code for plots - but which plots ought we include ?)
+
+From the plots, it is clear that using Ridge Regression or Lasso on our data effectively reduced the variation. The data points are transformed from being cloud-like to a more linear spread. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both shrunk the variables '' and '' ; this indicate that these variables may be less important for our model's predictions. 
+
+
+
+## Smoothing 
+We were next interested in smoothing the variable of vote counts, as it appeared to be one of the most important variables in the model. We used both kernel and spline smoothing methods, each time changing the degrees of freedom. With larger degrees of freedom, the model became more flexible--but approached the dangerous territory of overfitting. 
+
+(code for kernel and spline plots)
+
 We conclude that the best model is one that accurately describes the model, without overfitting the data. Such a model is .
 
 ## Principal Component Analysis
@@ -383,6 +398,6 @@ To test the idea that we can predict whether a film is labeled as an Action movi
 Our logistic regression then used these parameters to calculate the odds associated with predicting a movie's genre as 'Action' or not. This revealed some interesting findings. A doubling of budget, holding all other variables constant, was associated with a 42% increase in odds that a movie would be classified as Action. This may not be surprising; action movies tend to demand expensive equipment and high-profile actors. Similarly, a doubling in the amount of votes cast on a movie was associated with a 50% increase in odds of classifying the movie as Action. Interestingly, a doubling of the actual vote score was associated with a 57% decrease in the odds of our model classifying the movie as Action. One interpretation of these findings is that people may be more likely to vote on action movies, but do not necessarily award them higher scores than other types of movies.
 
 ## Conclusion
-Our aim with this project was to explore the limits of predicting a movie's popularity, given financial, social, and temporal data about its production. We found that the largest predictor variable, with a coefficient estimate of 0.67, was the "vote count", or sheer number of times the movie had been voted upon. Interestingly, the average vote score parameter was shrunk by Ridge Regression and Lasso, suggesting that it does not efficiently explain the variation in our data. One possible explanation of these seemingly confounding results is that the average vote is taken from critics, while the popularity score is derived from anybody interacting with the movie online. Perhaps movie critics simply do not agree with popular taste. 
+Our aim with this project was to explore the limits of predicting a movie's popularity, given financial, social, and temporal data about its production. We found that the greatest predictor variable, with a coefficient estimate of 0.67, was the "vote count", or sheer number of times the movie had been voted upon. Interestingly, the average vote score parameter was shrunk by Ridge Regression and Lasso, suggesting that it does not efficiently explain the variation in our data. One possible explanation of these seemingly confounding results is that the average vote is taken from critics, while the popularity score is derived from anybody interacting with the movie online. Perhaps movie critics simply do not agree with popular taste. 
 
-Another very interesting result our analysis revealed was that the parameter of whether a movie was produced before or after the year 2007 was significant in predicting its popularity. Since the introduction of the iPhone in 2007, teenager's anxiety levels have spiked, and their rates of socializing outside the house have dropped. As popularity scores are primarily determined from online activity, we wondered whether movies produced in the post-iPhone era might be affected by this decline in physical, and rise in digital, social activity. Indeed, the parameter's coefficient actually grew following Ridge Regression, s that if a movie was produced after 2007, it is associated with a 0.03 increase in the movie's popularity. 
+Another very interesting result our analysis revealed was that the parameter of whether a movie was produced before or after the year 2007 was significant in predicting its popularity. Since the introduction of the iPhone in 2007, teenager's anxiety levels have spiked, and their rates of socializing outside the house have dropped. As popularity scores are primarily determined from online activity, we wondered whether movies produced in the post-iPhone era might be affected by this decline in physical, and rise in digital, social activity. Indeed, the parameter's coefficient actually grew following Ridge Regression, meaning that a movie's being produced after 2007 is associated with a 0.03 increase in the movie's popularity. 
