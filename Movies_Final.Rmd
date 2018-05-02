@@ -289,12 +289,10 @@ ggplot(data = test, aes(x=pop.log, y=ridge.pred)) +
   xlab ( "Observed Popularity")+
   ylab("Predicted Popularity") +
   ggtitle("Comparing MLR, Ridge Regression and Lasso") 
-  scale_colour_manual(name  ="Model Type", values=c("yellow", "orange", "green"),
-                          labels=c("Ridge Regression", "Lasso", "MLR"))
 ```
 Figure 1. Comparison of MLR, Ridge Regression and Lasso models.  Ridge Regression (yellow) and Lasso (orange) display a comparable comparable relationship between observed popularirty and predicted popularity where both predict similar values as the observed. MLR (green) on the otherhand appears to underpredict the popularity compared to the observed popularity.
 
-From the plots, it is clear that using Ridge Regression or Lasso predicts our data in a more representative manner. The data points represent how well the predicted popularity correlates with the observed popularity in a test set. If the predicted is accurate in predicted the observed, we would expect a slope of around 1 and that is what we observe. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both decreased the coefficients of language, Action, Adventure and Drama, relative to the previous Multiple Linear Regression model, indicating  that these variables may be less important for our predictions.
+From the plots, it is clear that using Ridge Regression or Lasso predicts our data in a more representative manner. The data points represent how well the predicted popularity correlates with the observed popularity in a test set. If the predicted is accurate in predicted the observed, we would expect a slope of around 1 and that is what we observe for Ridge Regression and Lasso but not MLR. Interestingly, the models produced by Ridge Regression and Lasso are quite similar. We notice that Lasso and Ridge Regression have both decreased the coefficients of language, Action, Adventure and Drama, relative to the previous Multiple Linear Regression model, indicating  that these variables may be less important for our predictions. 
 
 ## Smoothing 
 We were next interested in smoothing the variable of vote counts, as it appeared to be one of the most important variables in the model. We used both kernel and spline smoothing methods, each time changing the degrees of freedom. With larger degrees of freedom, the model became more flexible--but approached the dangerous territory of overfitting. 
